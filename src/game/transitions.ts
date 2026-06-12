@@ -1,5 +1,10 @@
-import { GameState, GameAction, StartState } from './types';
-import { INITIAL_SCORE, INITIAL_HIGH_SCORE } from './constants';
+import { GameState, GameAction, StartState, GiraffePosition } from './types';
+import {
+  INITIAL_SCORE,
+  INITIAL_HIGH_SCORE,
+  INITIAL_GIRAFFE_POSITION,
+} from './constants';
+import { moveGiraffe } from './movement';
 
 export const INITIAL_STATE: StartState = {
   phase: 'start',
@@ -7,6 +12,7 @@ export const INITIAL_STATE: StartState = {
   highScore: INITIAL_HIGH_SCORE,
   tickCount: 0,
   lastTickTime: 0,
+  giraffePosition: INITIAL_GIRAFFE_POSITION as GiraffePosition,
 };
 
 export function transition(
@@ -25,6 +31,7 @@ export function transition(
         tickCount: 0,
         lastTickTime: 0,
         deltaTime: 0,
+        giraffePosition: INITIAL_GIRAFFE_POSITION as GiraffePosition,
       };
     }
     case 'PAUSE': {
@@ -35,6 +42,7 @@ export function transition(
         highScore: state.highScore,
         tickCount: state.tickCount,
         lastTickTime: state.lastTickTime,
+        giraffePosition: state.giraffePosition,
         pausedAt: now,
       };
     }
@@ -48,6 +56,7 @@ export function transition(
         tickCount: state.tickCount,
         lastTickTime: now,
         deltaTime: 0,
+        giraffePosition: state.giraffePosition,
       };
     }
     case 'GAME_OVER': {
@@ -59,8 +68,18 @@ export function transition(
         highScore: Math.max(finalScore, state.highScore),
         tickCount: state.tickCount,
         lastTickTime: state.lastTickTime,
+        giraffePosition: state.giraffePosition,
         finalScore,
         reason: action.reason,
+      };
+    }
+    case 'MOVE_UP':
+    case 'MOVE_DOWN': {
+      if (state.phase !== 'playing') return state;
+      const direction = action.type === 'MOVE_UP' ? 'up' : 'down';
+      return {
+        ...state,
+        giraffePosition: moveGiraffe(state.giraffePosition, direction),
       };
     }
     case 'RESTART': {

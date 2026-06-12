@@ -11,6 +11,7 @@ const playingState: PlayingState = {
   tickCount: 0,
   lastTickTime: 0,
   deltaTime: 0,
+  giraffePosition: 0,
 };
 
 describe('update', () => {
@@ -21,6 +22,7 @@ describe('update', () => {
       highScore: 0,
       tickCount: 0,
       lastTickTime: 0,
+      giraffePosition: 0,
     };
     const result = update(startState, 1000);
     expect(result).toBe(startState);

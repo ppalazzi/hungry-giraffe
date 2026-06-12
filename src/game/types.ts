@@ -1,11 +1,15 @@
 export type GamePhase = 'start' | 'playing' | 'paused' | 'game_over';
 
+/** One of the 4 fixed vertical LCD positions: 0 = top ... 3 = bottom. */
+export type GiraffePosition = 0 | 1 | 2 | 3;
+
 export interface GameStateBase {
   readonly phase: GamePhase;
   readonly score: number;
   readonly highScore: number;
   readonly tickCount: number;
   readonly lastTickTime: number;
+  readonly giraffePosition: GiraffePosition;
 }
 
 export interface StartState extends GameStateBase {
@@ -36,4 +40,6 @@ export type GameAction =
   | { type: 'PAUSE' }
   | { type: 'RESUME' }
   | { type: 'GAME_OVER'; reason: GameOverState['reason'] }
-  | { type: 'RESTART' };
+  | { type: 'RESTART' }
+  | { type: 'MOVE_UP' }
+  | { type: 'MOVE_DOWN' };

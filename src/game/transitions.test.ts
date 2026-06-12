@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { transition, INITIAL_STATE } from './transitions';
 import { PlayingState, PausedState, GameOverState } from './types';
+import { INITIAL_GIRAFFE_POSITION } from './constants';
 
 const playingState: PlayingState = {
   phase: 'playing',
@@ -10,6 +11,7 @@ const playingState: PlayingState = {
   tickCount: 10,
   lastTickTime: 1000,
   deltaTime: 0,
+  giraffePosition: 1,
 };
 
 describe('transition', () => {
@@ -27,6 +29,7 @@ describe('transition', () => {
       highScore: 10,
       tickCount: 20,
       lastTickTime: 2000,
+      giraffePosition: 2,
       pausedAt: 2500,
     };
     const next = transition(paused, { type: 'START_GAME' });
@@ -55,6 +58,7 @@ describe('transition', () => {
       highScore: 10,
       tickCount: 20,
       lastTickTime: 2000,
+      giraffePosition: 2,
       pausedAt: 2500,
     };
     const next = transition(paused, { type: 'RESUME' }, 3000);
@@ -97,6 +101,7 @@ describe('transition', () => {
       highScore: 50,
       tickCount: 100,
       lastTickTime: 5000,
+      giraffePosition: 2,
       finalScore: 50,
       reason: 'starved',
     };
@@ -105,5 +110,60 @@ describe('transition', () => {
     expect(next.highScore).toBe(50);
     expect(next.score).toBe(0);
     expect(next.tickCount).toBe(0);
+  });
+
+  it('START_GAME resets the giraffe to the initial position', () => {
+    const gameOver: GameOverState = {
+      phase: 'game_over',
+      score: 50,
+      highScore: 50,
+      tickCount: 100,
+      lastTickTime: 5000,
+      giraffePosition: 3,
+      finalScore: 50,
+      reason: 'starved',
+    };
+    const next = transition(gameOver, { type: 'START_GAME' });
+    expect(next.giraffePosition).toBe(INITIAL_GIRAFFE_POSITION);
+  });
+
+  it('RESTART resets the giraffe to the initial position', () => {
+    const next = transition(playingState, { type: 'RESTART' });
+    expect(next.giraffePosition).toBe(INITIAL_GIRAFFE_POSITION);
+  });
+
+  it('MOVE_DOWN while playing moves the giraffe down one position', () => {
+    const next = transition(playingState, { type: 'MOVE_DOWN' });
+    expect(next.giraffePosition).toBe(2);
+  });
+
+  it('MOVE_UP while playing moves the giraffe up one position', () => {
+    const next = transition(playingState, { type: 'MOVE_UP' });
+    expect(next.giraffePosition).toBe(0);
+  });
+
+  it('MOVE_UP is clamped at the top boundary', () => {
+    const atTop: PlayingState = { ...playingState, giraffePosition: 0 };
+    const next = transition(atTop, { type: 'MOVE_UP' });
+    expect(next.giraffePosition).toBe(0);
+  });
+
+  it('MOVE_DOWN is clamped at the bottom boundary', () => {
+    const atBottom: PlayingState = { ...playingState, giraffePosition: 3 };
+    const next = transition(atBottom, { type: 'MOVE_DOWN' });
+    expect(next.giraffePosition).toBe(3);
+  });
+
+  it('PAUSE then RESUME preserves the giraffe position', () => {
+    const moved: PlayingState = { ...playingState, giraffePosition: 2 };
+    const paused = transition(moved, { type: 'PAUSE' }, 5000);
+    expect(paused.giraffePosition).toBe(2);
+    const resumed = transition(paused, { type: 'RESUME' }, 6000);
+    expect(resumed.giraffePosition).toBe(2);
+  });
+
+  it('MOVE actions are ignored when not playing', () => {
+    expect(transition(INITIAL_STATE, { type: 'MOVE_UP' })).toBe(INITIAL_STATE);
+    expect(transition(INITIAL_STATE, { type: 'MOVE_DOWN' })).toBe(INITIAL_STATE);
   });
 });

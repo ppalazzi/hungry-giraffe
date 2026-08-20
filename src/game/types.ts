@@ -10,6 +10,8 @@ export interface GameStateBase {
   readonly tickCount: number;
   readonly lastTickTime: number;
   readonly giraffePosition: GiraffePosition;
+  readonly leafPositions: readonly GiraffePosition[];
+  readonly activeLeafPosition: GiraffePosition;
 }
 
 export interface StartState extends GameStateBase {

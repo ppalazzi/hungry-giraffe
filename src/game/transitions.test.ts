@@ -1,18 +1,58 @@
 import { describe, it, expect } from 'vitest';
 import { transition, INITIAL_STATE } from './transitions';
 import { PlayingState, PausedState, GameOverState } from './types';
-import { INITIAL_GIRAFFE_POSITION } from './constants';
+import { INITIAL_GIRAFFE_POSITION, LEAF_COUNT } from './constants';
 
-const playingState: PlayingState = {
-  phase: 'playing',
-  isPaused: false,
-  score: 0,
-  highScore: 0,
-  tickCount: 10,
-  lastTickTime: 1000,
-  deltaTime: 0,
-  giraffePosition: 1,
-};
+const always = (value: number) => () => value;
+
+function makePlayingState(overrides: Partial<PlayingState> = {}): PlayingState {
+  return {
+    phase: 'playing',
+    isPaused: false,
+    score: 0,
+    highScore: 0,
+    tickCount: 10,
+    lastTickTime: 1000,
+    deltaTime: 0,
+    giraffePosition: 1,
+    leafPositions: [0, 2],
+    activeLeafPosition: 0,
+    ...overrides,
+  };
+}
+
+function makePausedState(overrides: Partial<PausedState> = {}): PausedState {
+  return {
+    phase: 'paused',
+    score: 5,
+    highScore: 10,
+    tickCount: 20,
+    lastTickTime: 2000,
+    giraffePosition: 2,
+    leafPositions: [0, 2],
+    activeLeafPosition: 0,
+    pausedAt: 2500,
+    ...overrides,
+  };
+}
+
+function makeGameOverState(overrides: Partial<GameOverState> = {}): GameOverState {
+  return {
+    phase: 'game_over',
+    score: 50,
+    highScore: 50,
+    tickCount: 100,
+    lastTickTime: 5000,
+    giraffePosition: 2,
+    leafPositions: [0, 2],
+    activeLeafPosition: 0,
+    finalScore: 50,
+    reason: 'starved',
+    ...overrides,
+  };
+}
+
+const playingState = makePlayingState();
 
 describe('transition', () => {
   it('START_GAME from start moves to playing', () => {
@@ -23,17 +63,15 @@ describe('transition', () => {
   });
 
   it('START_GAME from paused is a no-op', () => {
-    const paused: PausedState = {
-      phase: 'paused',
-      score: 5,
-      highScore: 10,
-      tickCount: 20,
-      lastTickTime: 2000,
-      giraffePosition: 2,
-      pausedAt: 2500,
-    };
+    const paused = makePausedState();
     const next = transition(paused, { type: 'START_GAME' });
     expect(next).toBe(paused);
+  });
+
+  it('START_GAME spawns LEAF_COUNT leaves with an active leaf among them', () => {
+    const next = transition(INITIAL_STATE, { type: 'START_GAME' }, 0, always(0));
+    expect(next.leafPositions).toHaveLength(LEAF_COUNT);
+    expect(next.leafPositions).toContain(next.activeLeafPosition);
   });
 
   it('PAUSE from playing moves to paused with correct pausedAt', () => {
@@ -52,15 +90,7 @@ describe('transition', () => {
   });
 
   it('RESUME from paused returns to playing', () => {
-    const paused: PausedState = {
-      phase: 'paused',
-      score: 5,
-      highScore: 10,
-      tickCount: 20,
-      lastTickTime: 2000,
-      giraffePosition: 2,
-      pausedAt: 2500,
-    };
+    const paused = makePausedState();
     const next = transition(paused, { type: 'RESUME' }, 3000);
     expect(next.phase).toBe('playing');
     if (next.phase === 'playing') {
@@ -70,8 +100,18 @@ describe('transition', () => {
     }
   });
 
+  it('PAUSE then RESUME preserves the leaf layout', () => {
+    const moved = makePlayingState({ leafPositions: [1, 3], activeLeafPosition: 3 });
+    const paused = transition(moved, { type: 'PAUSE' }, 5000);
+    expect(paused.leafPositions).toEqual([1, 3]);
+    expect(paused.activeLeafPosition).toBe(3);
+    const resumed = transition(paused, { type: 'RESUME' }, 6000);
+    expect(resumed.leafPositions).toEqual([1, 3]);
+    expect(resumed.activeLeafPosition).toBe(3);
+  });
+
   it('GAME_OVER updates highScore when finalScore is greater', () => {
-    const highScoreState: PlayingState = { ...playingState, score: 42, highScore: 10 };
+    const highScoreState = makePlayingState({ score: 42, highScore: 10 });
     const next = transition(highScoreState, { type: 'GAME_OVER', reason: 'starved' });
     expect(next.phase).toBe('game_over');
     if (next.phase === 'game_over') {
@@ -82,7 +122,7 @@ describe('transition', () => {
   });
 
   it('GAME_OVER preserves highScore when it is already higher', () => {
-    const lowScoreState: PlayingState = { ...playingState, score: 5, highScore: 100 };
+    const lowScoreState = makePlayingState({ score: 5, highScore: 100 });
     const next = transition(lowScoreState, { type: 'GAME_OVER', reason: 'timeout' });
     if (next.phase === 'game_over') {
       expect(next.highScore).toBe(100);
@@ -95,16 +135,7 @@ describe('transition', () => {
   });
 
   it('RESTART from game_over returns to start with preserved highScore', () => {
-    const gameOver: GameOverState = {
-      phase: 'game_over',
-      score: 50,
-      highScore: 50,
-      tickCount: 100,
-      lastTickTime: 5000,
-      giraffePosition: 2,
-      finalScore: 50,
-      reason: 'starved',
-    };
+    const gameOver = makeGameOverState();
     const next = transition(gameOver, { type: 'RESTART' });
     expect(next.phase).toBe('start');
     expect(next.highScore).toBe(50);
@@ -112,17 +143,15 @@ describe('transition', () => {
     expect(next.tickCount).toBe(0);
   });
 
+  it('RESTART resets the leaf layout to the initial snapshot', () => {
+    const played = makePlayingState({ leafPositions: [1, 3], activeLeafPosition: 3 });
+    const next = transition(played, { type: 'RESTART' });
+    expect(next.leafPositions).toEqual(INITIAL_STATE.leafPositions);
+    expect(next.activeLeafPosition).toBe(INITIAL_STATE.activeLeafPosition);
+  });
+
   it('START_GAME resets the giraffe to the initial position', () => {
-    const gameOver: GameOverState = {
-      phase: 'game_over',
-      score: 50,
-      highScore: 50,
-      tickCount: 100,
-      lastTickTime: 5000,
-      giraffePosition: 3,
-      finalScore: 50,
-      reason: 'starved',
-    };
+    const gameOver = makeGameOverState({ giraffePosition: 3 });
     const next = transition(gameOver, { type: 'START_GAME' });
     expect(next.giraffePosition).toBe(INITIAL_GIRAFFE_POSITION);
   });
@@ -143,19 +172,19 @@ describe('transition', () => {
   });
 
   it('MOVE_UP is clamped at the top boundary', () => {
-    const atTop: PlayingState = { ...playingState, giraffePosition: 0 };
+    const atTop = makePlayingState({ giraffePosition: 0 });
     const next = transition(atTop, { type: 'MOVE_UP' });
     expect(next.giraffePosition).toBe(0);
   });
 
   it('MOVE_DOWN is clamped at the bottom boundary', () => {
-    const atBottom: PlayingState = { ...playingState, giraffePosition: 3 };
+    const atBottom = makePlayingState({ giraffePosition: 3 });
     const next = transition(atBottom, { type: 'MOVE_DOWN' });
     expect(next.giraffePosition).toBe(3);
   });
 
   it('PAUSE then RESUME preserves the giraffe position', () => {
-    const moved: PlayingState = { ...playingState, giraffePosition: 2 };
+    const moved = makePlayingState({ giraffePosition: 2 });
     const paused = transition(moved, { type: 'PAUSE' }, 5000);
     expect(paused.giraffePosition).toBe(2);
     const resumed = transition(paused, { type: 'RESUME' }, 6000);

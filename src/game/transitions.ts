@@ -3,8 +3,11 @@ import {
   INITIAL_SCORE,
   INITIAL_HIGH_SCORE,
   INITIAL_GIRAFFE_POSITION,
+  INITIAL_LEAF_POSITIONS,
+  INITIAL_ACTIVE_LEAF_POSITION,
 } from './constants';
 import { moveGiraffe } from './movement';
+import { spawnInitialLeaves } from './leaves';
 
 export const INITIAL_STATE: StartState = {
   phase: 'start',
@@ -13,16 +16,20 @@ export const INITIAL_STATE: StartState = {
   tickCount: 0,
   lastTickTime: 0,
   giraffePosition: INITIAL_GIRAFFE_POSITION as GiraffePosition,
+  leafPositions: INITIAL_LEAF_POSITIONS,
+  activeLeafPosition: INITIAL_ACTIVE_LEAF_POSITION,
 };
 
 export function transition(
   state: GameState,
   action: GameAction,
-  now: number = performance.now()
+  now: number = performance.now(),
+  random: () => number = Math.random,
 ): GameState {
   switch (action.type) {
     case 'START_GAME': {
       if (state.phase !== 'start' && state.phase !== 'game_over') return state;
+      const { leafPositions, activeLeafPosition } = spawnInitialLeaves(random);
       return {
         phase: 'playing',
         isPaused: false,
@@ -32,6 +39,8 @@ export function transition(
         lastTickTime: 0,
         deltaTime: 0,
         giraffePosition: INITIAL_GIRAFFE_POSITION as GiraffePosition,
+        leafPositions,
+        activeLeafPosition,
       };
     }
     case 'PAUSE': {
@@ -43,6 +52,8 @@ export function transition(
         tickCount: state.tickCount,
         lastTickTime: state.lastTickTime,
         giraffePosition: state.giraffePosition,
+        leafPositions: state.leafPositions,
+        activeLeafPosition: state.activeLeafPosition,
         pausedAt: now,
       };
     }
@@ -57,6 +68,8 @@ export function transition(
         lastTickTime: now,
         deltaTime: 0,
         giraffePosition: state.giraffePosition,
+        leafPositions: state.leafPositions,
+        activeLeafPosition: state.activeLeafPosition,
       };
     }
     case 'GAME_OVER': {
@@ -69,6 +82,8 @@ export function transition(
         tickCount: state.tickCount,
         lastTickTime: state.lastTickTime,
         giraffePosition: state.giraffePosition,
+        leafPositions: state.leafPositions,
+        activeLeafPosition: state.activeLeafPosition,
         finalScore,
         reason: action.reason,
       };

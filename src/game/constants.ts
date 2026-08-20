@@ -22,7 +22,10 @@ export const INITIAL_ACTIVE_LEAF_POSITION: GiraffePosition = 0;
 export const INITIAL_MONKEY_POSITION: GiraffePosition = 3;
 export const INITIAL_MONKEY_ACTION: MonkeyAction = 'idle';
 
-// How often the active leaf moves to another lane, and how often the
-// monkey advances to its next action.
-export const ACTIVE_LEAF_CYCLE_TICKS = 60; // ~2s @ 30 TPS
-export const MONKEY_CYCLE_TICKS = 45; // ~1.5s
+// Active-leaf / monkey cycle timing, scaled down as score rises.
+export const BASE_ACTIVE_LEAF_CYCLE_TICKS = 60; // ~2s @ 30 TPS
+export const BASE_MONKEY_CYCLE_TICKS = 45; // ~1.5s
+export const MIN_CYCLE_TICKS = 15; // ~0.5s floor
+
+export const SPEED_SCORE_STEP = 100; // every N points, speed increases
+export const CYCLE_TICKS_PER_SPEED_LEVEL = 5; // reduction per speed level

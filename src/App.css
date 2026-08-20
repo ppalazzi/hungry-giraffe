@@ -38,7 +38,7 @@
 
 .giraffe-row {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr 1fr 1fr;
   border-bottom: 1px dashed #333;
   /* Discrete LCD positions: snap instantly, no interpolation. */
   transition: none;
@@ -49,11 +49,22 @@
 }
 
 .tree-cell,
+.neck-cell,
 .giraffe-cell {
   height: 2.5rem;
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+.tree-cell--monkey-blocking,
+.tree-cell--monkey-attacking {
+  background: #1a1a1a;
+  filter: invert(1);
+}
+
+.neck-cell--extended {
+  letter-spacing: -0.1em;
 }
 
 .giraffe-cell--active {

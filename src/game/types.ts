@@ -3,6 +3,9 @@ export type GamePhase = 'start' | 'playing' | 'paused' | 'game_over';
 /** One of the 4 fixed vertical LCD positions: 0 = top ... 3 = bottom. */
 export type GiraffePosition = 0 | 1 | 2 | 3;
 
+/** Cyclic monkey behavior state, advances idle -> moving -> blocking -> attacking -> idle. */
+export type MonkeyAction = 'idle' | 'moving' | 'blocking' | 'attacking';
+
 export interface GameStateBase {
   readonly phase: GamePhase;
   readonly score: number;
@@ -10,8 +13,12 @@ export interface GameStateBase {
   readonly tickCount: number;
   readonly lastTickTime: number;
   readonly giraffePosition: GiraffePosition;
+  readonly lives: number;
   readonly leafPositions: readonly GiraffePosition[];
   readonly activeLeafPosition: GiraffePosition;
+  readonly monkeyPosition: GiraffePosition;
+  readonly monkeyAction: MonkeyAction;
+  readonly neckExtended: boolean;
 }
 
 export interface StartState extends GameStateBase {
@@ -44,4 +51,5 @@ export type GameAction =
   | { type: 'GAME_OVER'; reason: GameOverState['reason'] }
   | { type: 'RESTART' }
   | { type: 'MOVE_UP' }
-  | { type: 'MOVE_DOWN' };
+  | { type: 'MOVE_DOWN' }
+  | { type: 'EAT' };

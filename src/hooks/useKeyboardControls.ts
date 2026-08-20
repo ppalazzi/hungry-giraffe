@@ -2,8 +2,8 @@ import { useEffect } from 'react';
 import { GameAction } from '../game/types';
 
 /**
- * Maps the keyboard arrow keys to discrete giraffe movement actions.
- * ArrowUp moves the giraffe up one position, ArrowDown moves it down.
+ * Maps keyboard input to game actions.
+ * ArrowUp/ArrowDown move the giraffe up/down one lane; Space/Enter triggers EAT.
  *
  * `dispatch` from `useGameLoop` is stable (useCallback), so the listener is
  * attached once and cleaned up on unmount.
@@ -17,6 +17,9 @@ export function useKeyboardControls(dispatch: (action: GameAction) => void): voi
       } else if (event.key === 'ArrowDown') {
         event.preventDefault();
         dispatch({ type: 'MOVE_DOWN' });
+      } else if (event.key === ' ' || event.key === 'Enter') {
+        event.preventDefault();
+        dispatch({ type: 'EAT' });
       }
     };
 

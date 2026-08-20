@@ -1,13 +1,17 @@
-import { GameState, GameAction, StartState, GiraffePosition } from './types';
+import { GameState, GameAction, StartState, GiraffePosition, PlayingState } from './types';
 import {
   INITIAL_SCORE,
   INITIAL_HIGH_SCORE,
   INITIAL_GIRAFFE_POSITION,
+  INITIAL_LIVES,
   INITIAL_LEAF_POSITIONS,
   INITIAL_ACTIVE_LEAF_POSITION,
+  INITIAL_MONKEY_POSITION,
+  INITIAL_MONKEY_ACTION,
 } from './constants';
 import { moveGiraffe } from './movement';
 import { spawnInitialLeaves } from './leaves';
+import { resolveEat } from './eat';
 
 export const INITIAL_STATE: StartState = {
   phase: 'start',
@@ -16,8 +20,12 @@ export const INITIAL_STATE: StartState = {
   tickCount: 0,
   lastTickTime: 0,
   giraffePosition: INITIAL_GIRAFFE_POSITION as GiraffePosition,
+  lives: INITIAL_LIVES,
   leafPositions: INITIAL_LEAF_POSITIONS,
   activeLeafPosition: INITIAL_ACTIVE_LEAF_POSITION,
+  monkeyPosition: INITIAL_MONKEY_POSITION,
+  monkeyAction: INITIAL_MONKEY_ACTION,
+  neckExtended: false,
 };
 
 export function transition(
@@ -39,8 +47,12 @@ export function transition(
         lastTickTime: 0,
         deltaTime: 0,
         giraffePosition: INITIAL_GIRAFFE_POSITION as GiraffePosition,
+        lives: INITIAL_LIVES,
         leafPositions,
         activeLeafPosition,
+        monkeyPosition: INITIAL_MONKEY_POSITION,
+        monkeyAction: INITIAL_MONKEY_ACTION,
+        neckExtended: false,
       };
     }
     case 'PAUSE': {
@@ -52,8 +64,12 @@ export function transition(
         tickCount: state.tickCount,
         lastTickTime: state.lastTickTime,
         giraffePosition: state.giraffePosition,
+        lives: state.lives,
         leafPositions: state.leafPositions,
         activeLeafPosition: state.activeLeafPosition,
+        monkeyPosition: state.monkeyPosition,
+        monkeyAction: state.monkeyAction,
+        neckExtended: state.neckExtended,
         pausedAt: now,
       };
     }
@@ -68,8 +84,12 @@ export function transition(
         lastTickTime: now,
         deltaTime: 0,
         giraffePosition: state.giraffePosition,
+        lives: state.lives,
         leafPositions: state.leafPositions,
         activeLeafPosition: state.activeLeafPosition,
+        monkeyPosition: state.monkeyPosition,
+        monkeyAction: state.monkeyAction,
+        neckExtended: state.neckExtended,
       };
     }
     case 'GAME_OVER': {
@@ -82,8 +102,12 @@ export function transition(
         tickCount: state.tickCount,
         lastTickTime: state.lastTickTime,
         giraffePosition: state.giraffePosition,
+        lives: state.lives,
         leafPositions: state.leafPositions,
         activeLeafPosition: state.activeLeafPosition,
+        monkeyPosition: state.monkeyPosition,
+        monkeyAction: state.monkeyAction,
+        neckExtended: state.neckExtended,
         finalScore,
         reason: action.reason,
       };
@@ -96,6 +120,15 @@ export function transition(
         ...state,
         giraffePosition: moveGiraffe(state.giraffePosition, direction),
       };
+    }
+    case 'EAT': {
+      if (state.phase !== 'playing') return state;
+      const result = resolveEat(state, random);
+      const updated: PlayingState = { ...state, ...result };
+      if (updated.lives <= 0) {
+        return transition(updated, { type: 'GAME_OVER', reason: 'starved' }, now, random);
+      }
+      return updated;
     }
     case 'RESTART': {
       return { ...INITIAL_STATE, highScore: state.highScore };

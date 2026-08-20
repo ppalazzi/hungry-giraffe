@@ -15,16 +15,30 @@ export function GameCanvas({ gameState }: GameCanvasProps) {
     <div className="game-canvas">
       <div className="game-hud">
         <span>Score: {gameState.score}</span>
+        <span>Lives: {'♥'.repeat(Math.max(0, gameState.lives))}</span>
       </div>
       <div className="giraffe-track">
         {positions.map((lane) => {
           const hasLeaf = gameState.leafPositions.includes(lane);
           const isActiveLeaf = lane === gameState.activeLeafPosition;
+          const isMonkeyLane = lane === gameState.monkeyPosition;
           const isGiraffeLane = lane === gameState.giraffePosition;
+          const neckExtended = isGiraffeLane && gameState.neckExtended;
           const leafEmoji = hasLeaf ? (isActiveLeaf ? '🍃' : '🌿') : '';
+          const monkeyEmoji = isMonkeyLane ? '🐵' : '';
           return (
             <div key={lane} className="giraffe-row">
-              <div className="tree-cell">{leafEmoji}</div>
+              <div
+                className={`tree-cell ${
+                  isMonkeyLane ? `tree-cell--monkey-${gameState.monkeyAction}` : ''
+                }`}
+              >
+                {leafEmoji}
+                {monkeyEmoji}
+              </div>
+              <div className={`neck-cell ${neckExtended ? 'neck-cell--extended' : ''}`}>
+                {neckExtended ? '────' : ''}
+              </div>
               <div className={`giraffe-cell ${isGiraffeLane ? 'giraffe-cell--active' : ''}`}>
                 {isGiraffeLane ? '🦒' : ''}
               </div>

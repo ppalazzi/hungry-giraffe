@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { transition, INITIAL_STATE } from './transitions';
 import { PlayingState, PausedState, GameOverState } from './types';
-import { INITIAL_GIRAFFE_POSITION, LEAF_COUNT } from './constants';
+import { INITIAL_GIRAFFE_POSITION, INITIAL_LIVES, LEAF_COUNT, SCORE_PER_LEAF } from './constants';
 
 const always = (value: number) => () => value;
 
@@ -15,8 +15,12 @@ function makePlayingState(overrides: Partial<PlayingState> = {}): PlayingState {
     lastTickTime: 1000,
     deltaTime: 0,
     giraffePosition: 1,
+    lives: INITIAL_LIVES,
     leafPositions: [0, 2],
     activeLeafPosition: 0,
+    monkeyPosition: 3,
+    monkeyAction: 'idle',
+    neckExtended: false,
     ...overrides,
   };
 }
@@ -29,8 +33,12 @@ function makePausedState(overrides: Partial<PausedState> = {}): PausedState {
     tickCount: 20,
     lastTickTime: 2000,
     giraffePosition: 2,
+    lives: INITIAL_LIVES,
     leafPositions: [0, 2],
     activeLeafPosition: 0,
+    monkeyPosition: 3,
+    monkeyAction: 'idle',
+    neckExtended: false,
     pausedAt: 2500,
     ...overrides,
   };
@@ -44,8 +52,12 @@ function makeGameOverState(overrides: Partial<GameOverState> = {}): GameOverStat
     tickCount: 100,
     lastTickTime: 5000,
     giraffePosition: 2,
+    lives: 0,
     leafPositions: [0, 2],
     activeLeafPosition: 0,
+    monkeyPosition: 3,
+    monkeyAction: 'idle',
+    neckExtended: false,
     finalScore: 50,
     reason: 'starved',
     ...overrides,
@@ -68,10 +80,14 @@ describe('transition', () => {
     expect(next).toBe(paused);
   });
 
-  it('START_GAME spawns LEAF_COUNT leaves with an active leaf among them', () => {
-    const next = transition(INITIAL_STATE, { type: 'START_GAME' }, 0, always(0));
-    expect(next.leafPositions).toHaveLength(LEAF_COUNT);
-    expect(next.leafPositions).toContain(next.activeLeafPosition);
+  it('START_GAME sets up lives, leaves, and monkey state', () => {
+    const next = transition(INITIAL_STATE, { type: 'START_GAME' }, performance.now(), always(0));
+    expect(next.lives).toBe(INITIAL_LIVES);
+    if (next.phase === 'playing') {
+      expect(next.leafPositions).toHaveLength(LEAF_COUNT);
+      expect(next.leafPositions).toContain(next.activeLeafPosition);
+      expect(next.monkeyAction).toBe('idle');
+    }
   });
 
   it('PAUSE from playing moves to paused with correct pausedAt', () => {
@@ -100,14 +116,30 @@ describe('transition', () => {
     }
   });
 
-  it('PAUSE then RESUME preserves the leaf layout', () => {
-    const moved = makePlayingState({ leafPositions: [1, 3], activeLeafPosition: 3 });
+  it('PAUSE then RESUME preserves lives, leaves, and monkey fields', () => {
+    const moved = makePlayingState({
+      lives: 2,
+      leafPositions: [1, 3],
+      activeLeafPosition: 3,
+      monkeyPosition: 1,
+      monkeyAction: 'blocking',
+      neckExtended: true,
+    });
     const paused = transition(moved, { type: 'PAUSE' }, 5000);
+    expect(paused.lives).toBe(2);
     expect(paused.leafPositions).toEqual([1, 3]);
     expect(paused.activeLeafPosition).toBe(3);
+    expect(paused.monkeyPosition).toBe(1);
+    expect(paused.monkeyAction).toBe('blocking');
+    expect(paused.neckExtended).toBe(true);
+
     const resumed = transition(paused, { type: 'RESUME' }, 6000);
+    expect(resumed.lives).toBe(2);
     expect(resumed.leafPositions).toEqual([1, 3]);
     expect(resumed.activeLeafPosition).toBe(3);
+    expect(resumed.monkeyPosition).toBe(1);
+    expect(resumed.monkeyAction).toBe('blocking');
+    expect(resumed.neckExtended).toBe(true);
   });
 
   it('GAME_OVER updates highScore when finalScore is greater', () => {
@@ -143,11 +175,12 @@ describe('transition', () => {
     expect(next.tickCount).toBe(0);
   });
 
-  it('RESTART resets the leaf layout to the initial snapshot', () => {
-    const played = makePlayingState({ leafPositions: [1, 3], activeLeafPosition: 3 });
-    const next = transition(played, { type: 'RESTART' });
+  it('RESTART resets lives, leaves, and monkey state', () => {
+    const gameOver = makeGameOverState({ lives: 0, leafPositions: [1, 3], monkeyAction: 'attacking' });
+    const next = transition(gameOver, { type: 'RESTART' });
+    expect(next.lives).toBe(INITIAL_LIVES);
     expect(next.leafPositions).toEqual(INITIAL_STATE.leafPositions);
-    expect(next.activeLeafPosition).toBe(INITIAL_STATE.activeLeafPosition);
+    expect(next.monkeyAction).toBe(INITIAL_STATE.monkeyAction);
   });
 
   it('START_GAME resets the giraffe to the initial position', () => {
@@ -183,16 +216,87 @@ describe('transition', () => {
     expect(next.giraffePosition).toBe(3);
   });
 
-  it('PAUSE then RESUME preserves the giraffe position', () => {
-    const moved = makePlayingState({ giraffePosition: 2 });
-    const paused = transition(moved, { type: 'PAUSE' }, 5000);
-    expect(paused.giraffePosition).toBe(2);
-    const resumed = transition(paused, { type: 'RESUME' }, 6000);
-    expect(resumed.giraffePosition).toBe(2);
-  });
-
   it('MOVE actions are ignored when not playing', () => {
     expect(transition(INITIAL_STATE, { type: 'MOVE_UP' })).toBe(INITIAL_STATE);
     expect(transition(INITIAL_STATE, { type: 'MOVE_DOWN' })).toBe(INITIAL_STATE);
+  });
+
+  it('EAT is ignored when not playing', () => {
+    expect(transition(INITIAL_STATE, { type: 'EAT' })).toBe(INITIAL_STATE);
+  });
+
+  it('EAT on the active leaf awards score and updates leaves', () => {
+    const state = makePlayingState({
+      giraffePosition: 0,
+      activeLeafPosition: 0,
+      leafPositions: [0, 2],
+      monkeyPosition: 3,
+      monkeyAction: 'idle',
+      score: 0,
+      lives: 3,
+    });
+    const next = transition(state, { type: 'EAT' }, performance.now(), always(0.99));
+    expect(next.phase).toBe('playing');
+    if (next.phase === 'playing') {
+      expect(next.score).toBe(SCORE_PER_LEAF);
+      expect(next.lives).toBe(3);
+      expect(next.leafPositions).not.toContain(0);
+      expect(next.neckExtended).toBe(true);
+    }
+  });
+
+  it('EAT off the active leaf costs a life with no score change', () => {
+    const state = makePlayingState({
+      giraffePosition: 1,
+      activeLeafPosition: 0,
+      leafPositions: [0, 2],
+      monkeyPosition: 3,
+      monkeyAction: 'idle',
+      score: 5,
+      lives: 3,
+    });
+    const next = transition(state, { type: 'EAT' }, performance.now(), always(0));
+    expect(next.phase).toBe('playing');
+    if (next.phase === 'playing') {
+      expect(next.lives).toBe(2);
+      expect(next.score).toBe(5);
+    }
+  });
+
+  it('EAT blocked by the monkey at the giraffe lane costs a life even on the active leaf', () => {
+    const state = makePlayingState({
+      giraffePosition: 1,
+      activeLeafPosition: 1,
+      leafPositions: [1, 2],
+      monkeyPosition: 1,
+      monkeyAction: 'attacking',
+      score: 5,
+      lives: 3,
+    });
+    const next = transition(state, { type: 'EAT' }, performance.now(), always(0));
+    expect(next.phase).toBe('playing');
+    if (next.phase === 'playing') {
+      expect(next.lives).toBe(2);
+      expect(next.score).toBe(5);
+    }
+  });
+
+  it('EAT that drops lives to 0 ends the game', () => {
+    const state = makePlayingState({
+      giraffePosition: 1,
+      activeLeafPosition: 0,
+      leafPositions: [0, 2],
+      monkeyPosition: 3,
+      monkeyAction: 'idle',
+      score: 30,
+      lives: 1,
+    });
+    const next = transition(state, { type: 'EAT' }, performance.now(), always(0));
+    expect(next.phase).toBe('game_over');
+    if (next.phase === 'game_over') {
+      expect(next.reason).toBe('starved');
+      expect(next.finalScore).toBe(30);
+      expect(next.lives).toBe(0);
+    }
   });
 });

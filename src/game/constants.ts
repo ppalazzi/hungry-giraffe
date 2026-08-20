@@ -1,4 +1,4 @@
-import { GiraffePosition } from './types';
+import { GiraffePosition, MonkeyAction } from './types';
 
 export const TARGET_FPS = 30;
 export const MS_PER_TICK = 1000 / TARGET_FPS;
@@ -11,12 +11,18 @@ export const MIN_GIRAFFE_POSITION = 0;
 export const MAX_GIRAFFE_POSITION = GIRAFFE_POSITION_COUNT - 1;
 export const INITIAL_GIRAFFE_POSITION = 0;
 
+export const INITIAL_LIVES = 3;
+export const SCORE_PER_LEAF = 10;
 export const LEAF_COUNT = 2; // of GIRAFFE_POSITION_COUNT (4) lanes have a leaf at once
 
 // Static initial layout for INITIAL_STATE (the start-screen snapshot).
 // START_GAME re-randomizes via spawnInitialLeaves().
 export const INITIAL_LEAF_POSITIONS: readonly GiraffePosition[] = [0, 2];
 export const INITIAL_ACTIVE_LEAF_POSITION: GiraffePosition = 0;
+export const INITIAL_MONKEY_POSITION: GiraffePosition = 3;
+export const INITIAL_MONKEY_ACTION: MonkeyAction = 'idle';
 
-// How often the active leaf moves to another lane.
+// How often the active leaf moves to another lane, and how often the
+// monkey advances to its next action.
 export const ACTIVE_LEAF_CYCLE_TICKS = 60; // ~2s @ 30 TPS
+export const MONKEY_CYCLE_TICKS = 45; // ~1.5s

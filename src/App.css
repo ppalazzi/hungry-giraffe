@@ -57,13 +57,11 @@
   justify-content: center;
 }
 
-.tree-cell--monkey-blocking,
-.tree-cell--monkey-attacking {
-  background: #1a1a1a;
-  filter: invert(1);
+.giraffe-row--home {
+  border-top: 2px solid #444;
 }
 
-.neck-cell--extended {
+.neck-cell--lit {
   letter-spacing: -0.1em;
 }
 

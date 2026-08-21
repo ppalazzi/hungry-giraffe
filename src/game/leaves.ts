@@ -1,61 +1,38 @@
-import { GiraffePosition } from './types';
-import { GIRAFFE_POSITION_COUNT, LEAF_COUNT } from './constants';
+import { LeafPosition } from './types';
+import { MIN_LEAF_POSITION, LEAF_POSITION_COUNT, LEAF_COUNT } from './constants';
 
-/** Random lane not present in `exclude`. */
+/** Random reachable position (1..3) not present in `exclude`. */
 export function pickRandomPosition(
-  exclude: readonly GiraffePosition[],
+  exclude: readonly LeafPosition[],
   random: () => number,
-): GiraffePosition {
-  const available: GiraffePosition[] = [];
-  for (let i = 0; i < GIRAFFE_POSITION_COUNT; i++) {
-    const position = i as GiraffePosition;
-    if (!exclude.includes(position)) {
-      available.push(position);
-    }
+): LeafPosition {
+  const all: LeafPosition[] = [];
+  for (let i = 0; i < LEAF_POSITION_COUNT; i++) {
+    all.push((MIN_LEAF_POSITION + i) as LeafPosition);
   }
-  const pool = available.length > 0 ? available : Array.from(
-    { length: GIRAFFE_POSITION_COUNT },
-    (_, i) => i as GiraffePosition,
-  );
+  const available = all.filter((position) => !exclude.includes(position));
+  const pool = available.length > 0 ? available : all;
   return pool[Math.floor(random() * pool.length)];
 }
 
-/** LEAF_COUNT leaves at distinct random lanes; activeLeafPosition is one of them. */
-export function spawnInitialLeaves(
-  random: () => number,
-): { leafPositions: GiraffePosition[]; activeLeafPosition: GiraffePosition } {
-  const leafPositions: GiraffePosition[] = [];
+/** LEAF_COUNT leaves at distinct random reachable positions. */
+export function spawnInitialLeaves(random: () => number): LeafPosition[] {
+  const leafPositions: LeafPosition[] = [];
   for (let i = 0; i < LEAF_COUNT; i++) {
     leafPositions.push(pickRandomPosition(leafPositions, random));
   }
-  const activeLeafPosition = leafPositions[Math.floor(random() * leafPositions.length)];
-  return { leafPositions, activeLeafPosition };
-}
-
-/** New active lane from leafPositions, different from `current` when possible. */
-export function cycleActiveLeaf(
-  leafPositions: readonly GiraffePosition[],
-  current: GiraffePosition,
-  random: () => number,
-): GiraffePosition {
-  const candidates = leafPositions.filter((position) => position !== current);
-  const pool = candidates.length > 0 ? candidates : leafPositions;
-  return pool[Math.floor(random() * pool.length)];
+  return leafPositions;
 }
 
 /**
- * Removes `eatenPosition`, adds one new random unused lane (keeping
- * leafPositions.length === LEAF_COUNT), and picks a new activeLeafPosition
- * from the resulting set.
+ * Removes `eatenPosition` and reveals one new leaf at a free position, keeping
+ * leafPositions.length === LEAF_COUNT.
  */
 export function eatLeaf(
-  leafPositions: readonly GiraffePosition[],
-  eatenPosition: GiraffePosition,
+  leafPositions: readonly LeafPosition[],
+  eatenPosition: LeafPosition,
   random: () => number,
-): { leafPositions: GiraffePosition[]; activeLeafPosition: GiraffePosition } {
+): LeafPosition[] {
   const remaining = leafPositions.filter((position) => position !== eatenPosition);
-  const newPosition = pickRandomPosition(remaining, random);
-  const nextLeafPositions = [...remaining, newPosition];
-  const activeLeafPosition = nextLeafPositions[Math.floor(random() * nextLeafPositions.length)];
-  return { leafPositions: nextLeafPositions, activeLeafPosition };
+  return [...remaining, pickRandomPosition(remaining, random)];
 }

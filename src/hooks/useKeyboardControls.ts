@@ -3,7 +3,10 @@ import { GameAction } from '../game/types';
 
 /**
  * Maps keyboard input to game actions.
- * ArrowUp/ArrowDown move the giraffe up/down one lane; Space/Enter triggers EAT.
+ * ArrowUp extends the neck one segment, ArrowDown retracts it.
+ *
+ * There is deliberately no eat key: a leaf is cleared automatically when the
+ * head lights up on its position.
  *
  * `dispatch` from `useGameLoop` is stable (useCallback), so the listener is
  * attached once and cleaned up on unmount.
@@ -17,9 +20,6 @@ export function useKeyboardControls(dispatch: (action: GameAction) => void): voi
       } else if (event.key === 'ArrowDown') {
         event.preventDefault();
         dispatch({ type: 'MOVE_DOWN' });
-      } else if (event.key === ' ' || event.key === 'Enter') {
-        event.preventDefault();
-        dispatch({ type: 'EAT' });
       }
     };
 

@@ -1,13 +1,13 @@
-import { GameState } from './types';
+import { GameState, LeafPosition } from './types';
 import {
   MS_PER_TICK,
-  BASE_ACTIVE_LEAF_CYCLE_TICKS,
+  SCORE_PER_LEAF,
   BASE_MONKEY_CYCLE_TICKS,
   MIN_CYCLE_TICKS,
   SPEED_SCORE_STEP,
   CYCLE_TICKS_PER_SPEED_LEVEL,
 } from './constants';
-import { cycleActiveLeaf } from './leaves';
+import { eatLeaf } from './leaves';
 import { advanceMonkeyAction, pickMonkeyPosition } from './monkey';
 
 export function update(
@@ -19,13 +19,16 @@ export function update(
 
   const tickCount = state.tickCount + 1;
 
-  const leafCycle = effectiveCycleTicks(BASE_ACTIVE_LEAF_CYCLE_TICKS, state.score);
-  const activeLeafPosition =
-    tickCount % leafCycle === 0
-      ? cycleActiveLeaf(state.leafPositions, state.activeLeafPosition, random)
-      : state.activeLeafPosition;
+  // Eating is automatic: the leaf is cleared when the head segment lights up on
+  // the same position. There is no eat action to press.
+  const eaten = state.leafPositions.includes(state.giraffePosition as LeafPosition)
+    ? (state.giraffePosition as LeafPosition)
+    : null;
+  const leafPositions =
+    eaten === null ? state.leafPositions : eatLeaf(state.leafPositions, eaten, random);
+  const score = eaten === null ? state.score : state.score + SCORE_PER_LEAF;
 
-  const monkeyCycle = effectiveCycleTicks(BASE_MONKEY_CYCLE_TICKS, state.score);
+  const monkeyCycle = effectiveCycleTicks(BASE_MONKEY_CYCLE_TICKS, score);
   const shouldAdvanceMonkey = tickCount % monkeyCycle === 0;
   const monkeyAction = shouldAdvanceMonkey
     ? advanceMonkeyAction(state.monkeyAction)
@@ -40,10 +43,10 @@ export function update(
     tickCount,
     deltaTime: MS_PER_TICK,
     lastTickTime: now,
-    activeLeafPosition,
+    score,
+    leafPositions,
     monkeyAction,
     monkeyPosition,
-    neckExtended: false,
   };
 }
 

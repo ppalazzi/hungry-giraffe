@@ -1,15 +1,18 @@
-import { GameState, GiraffePosition } from '../game/types';
-import { GIRAFFE_POSITION_COUNT } from '../game/constants';
+import { GameState, GiraffePosition, LeafPosition, isNeckExtended } from '../game/types';
+import { MIN_GIRAFFE_POSITION, MAX_GIRAFFE_POSITION } from '../game/constants';
 
 interface GameCanvasProps {
   gameState: GameState;
 }
 
+/** Highest extension first, so position 0 (home) renders at the bottom. */
+const POSITIONS: GiraffePosition[] = [];
+for (let i = MAX_GIRAFFE_POSITION; i >= MIN_GIRAFFE_POSITION; i--) {
+  POSITIONS.push(i as GiraffePosition);
+}
+
 export function GameCanvas({ gameState }: GameCanvasProps) {
-  const positions = Array.from(
-    { length: GIRAFFE_POSITION_COUNT },
-    (_, i) => i as GiraffePosition,
-  );
+  const extended = isNeckExtended(gameState.giraffePosition);
 
   return (
     <div className="game-canvas">
@@ -18,29 +21,24 @@ export function GameCanvas({ gameState }: GameCanvasProps) {
         <span>Lives: {'♥'.repeat(Math.max(0, gameState.lives))}</span>
       </div>
       <div className="giraffe-track">
-        {positions.map((lane) => {
-          const hasLeaf = gameState.leafPositions.includes(lane);
-          const isActiveLeaf = lane === gameState.activeLeafPosition;
-          const isMonkeyLane = lane === gameState.monkeyPosition;
-          const isGiraffeLane = lane === gameState.giraffePosition;
-          const neckExtended = isGiraffeLane && gameState.neckExtended;
-          const leafEmoji = hasLeaf ? (isActiveLeaf ? '🍃' : '🌿') : '';
-          const monkeyEmoji = isMonkeyLane ? '🐵' : '';
+        {POSITIONS.map((position) => {
+          const isHome = position === MIN_GIRAFFE_POSITION;
+          const hasLeaf = gameState.leafPositions.includes(position as LeafPosition);
+          const isMonkeyPosition = position === gameState.monkeyPosition;
+          const isHead = position === gameState.giraffePosition;
+          // The neck lights every segment from home up to the head.
+          const isNeckSegment = extended && position > 0 && position <= gameState.giraffePosition;
           return (
-            <div key={lane} className="giraffe-row">
-              <div
-                className={`tree-cell ${
-                  isMonkeyLane ? `tree-cell--monkey-${gameState.monkeyAction}` : ''
-                }`}
-              >
-                {leafEmoji}
-                {monkeyEmoji}
+            <div key={position} className={`giraffe-row ${isHome ? 'giraffe-row--home' : ''}`}>
+              <div className="tree-cell">
+                {hasLeaf ? '🍃' : ''}
+                {isMonkeyPosition ? '🐵' : ''}
               </div>
-              <div className={`neck-cell ${neckExtended ? 'neck-cell--extended' : ''}`}>
-                {neckExtended ? '────' : ''}
+              <div className={`neck-cell ${isNeckSegment ? 'neck-cell--lit' : ''}`}>
+                {isNeckSegment ? '────' : ''}
               </div>
-              <div className={`giraffe-cell ${isGiraffeLane ? 'giraffe-cell--active' : ''}`}>
-                {isGiraffeLane ? '🦒' : ''}
+              <div className={`giraffe-cell ${isHead ? 'giraffe-cell--active' : ''}`}>
+                {isHead ? '🦒' : ''}
               </div>
             </div>
           );

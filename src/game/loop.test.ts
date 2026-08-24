@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { update } from './loop';
 import {
-  MS_PER_TICK,
+  BASE_TICK_MS,
   SCORE_PER_LEAF,
   INITIAL_LIVES,
   LEAF_COUNT,
@@ -9,6 +9,7 @@ import {
   COCONUT_RESPAWN_TICKS,
 } from './constants';
 import { PlayingState, StartState } from './types';
+import { tickIntervalMs } from './clock';
 
 const always = (value: number) => () => value;
 
@@ -53,9 +54,16 @@ describe('update', () => {
     expect(update(playingState, 1033).tickCount).toBe(1);
   });
 
-  it('sets deltaTime to MS_PER_TICK', () => {
+  it('sets deltaTime to the current clock interval', () => {
     const result = update(playingState, 1033);
-    expect(result.phase === 'playing' && result.deltaTime).toBe(MS_PER_TICK);
+    expect(result.phase === 'playing' && result.deltaTime).toBe(BASE_TICK_MS);
+  });
+
+  it('reports a shorter deltaTime once the score crosses a speed boundary', () => {
+    const fast = makePlayingState({ score: 200, giraffePosition: 2 });
+    const result = update(fast, 1000, always(0));
+    expect(result.phase === 'playing' && result.deltaTime).toBe(tickIntervalMs(200));
+    expect(tickIntervalMs(200)).toBeLessThan(BASE_TICK_MS);
   });
 
   it('sets lastTickTime to the provided now value', () => {
@@ -121,7 +129,7 @@ describe('update', () => {
     // The neck is home now, so the following ticks are safe.
     let state = struck;
     for (let i = 0; i < 10; i++) {
-      state = update(state, i * MS_PER_TICK) as PlayingState;
+      state = update(state, i * BASE_TICK_MS) as PlayingState;
     }
     expect(state.lives).toBe(INITIAL_LIVES - 1);
   });
@@ -129,7 +137,7 @@ describe('update', () => {
   it('leaves a retracted giraffe untouched for a whole drop', () => {
     let state = makePlayingState({ giraffePosition: 0, coconutStep: 1, coconutTicks: 1 });
     for (let i = 0; i < COCONUT_STEP_TICKS * 6; i++) {
-      state = update(state, i * MS_PER_TICK) as PlayingState;
+      state = update(state, i * BASE_TICK_MS) as PlayingState;
     }
     expect(state.lives).toBe(INITIAL_LIVES);
   });

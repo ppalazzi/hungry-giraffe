@@ -3,9 +3,10 @@ import { update } from './loop';
 import {
   MS_PER_TICK,
   SCORE_PER_LEAF,
-  BASE_MONKEY_CYCLE_TICKS,
   INITIAL_LIVES,
   LEAF_COUNT,
+  COCONUT_STEP_TICKS,
+  COCONUT_RESPAWN_TICKS,
 } from './constants';
 import { PlayingState, StartState } from './types';
 
@@ -23,8 +24,8 @@ function makePlayingState(overrides: Partial<PlayingState> = {}): PlayingState {
     giraffePosition: 0,
     lives: INITIAL_LIVES,
     leafPositions: [1, 3],
-    monkeyPosition: 3,
-    monkeyAction: 'idle',
+    coconutStep: null,
+    coconutTicks: COCONUT_RESPAWN_TICKS,
     ...overrides,
   };
 }
@@ -42,11 +43,10 @@ describe('update', () => {
       giraffePosition: 0,
       lives: INITIAL_LIVES,
       leafPositions: [1, 3],
-      monkeyPosition: 3,
-      monkeyAction: 'idle',
+      coconutStep: null,
+      coconutTicks: COCONUT_RESPAWN_TICKS,
     };
-    const result = update(startState, 1000);
-    expect(result).toBe(startState);
+    expect(update(startState, 1000)).toBe(startState);
   });
 
   it('increments tickCount by 1 on each call', () => {
@@ -77,44 +77,74 @@ describe('update', () => {
   });
 
   it('does not score while the head is away from every leaf', () => {
-    const offLeaf = makePlayingState({ giraffePosition: 2, leafPositions: [1, 3] });
+    const offLeaf = makePlayingState({ giraffePosition: 2 });
     const result = update(offLeaf, 1000, always(0));
     expect(result.score).toBe(0);
     expect(result.leafPositions).toEqual([1, 3]);
   });
 
   it('never scores at the home position', () => {
-    const home = makePlayingState({ giraffePosition: 0 });
-    const result = update(home, 1000, always(0));
+    const result = update(makePlayingState({ giraffePosition: 0 }), 1000, always(0));
     expect(result.score).toBe(0);
-    expect(result.leafPositions).toEqual([1, 3]);
   });
 
-  it('never costs a life — the coconut hazard lands in HG-25', () => {
-    let state = makePlayingState({ giraffePosition: 1 });
-    for (let i = 0; i < 200; i++) {
+  it('costs a life when a coconut strikes the extended neck', () => {
+    // One tick from advancing onto step 3, which sits at position 1.
+    const exposed = makePlayingState({
+      giraffePosition: 3,
+      coconutStep: 2,
+      coconutTicks: 1,
+    });
+    const result = update(exposed, 1000, always(0));
+    expect(result.lives).toBe(INITIAL_LIVES - 1);
+  });
+
+  it('knocks the neck back home and consumes the coconut on a hit', () => {
+    const exposed = makePlayingState({
+      giraffePosition: 3,
+      coconutStep: 2,
+      coconutTicks: 1,
+    });
+    const result = update(exposed, 1000, always(0));
+    expect(result.giraffePosition).toBe(0);
+    expect(result.coconutStep).toBeNull();
+    expect(result.coconutTicks).toBe(COCONUT_RESPAWN_TICKS);
+  });
+
+  it('costs exactly one life per coconut, not one per tick', () => {
+    const struck = update(
+      makePlayingState({ giraffePosition: 3, coconutStep: 2, coconutTicks: 1 }),
+      1000,
+      always(0),
+    ) as PlayingState;
+    expect(struck.lives).toBe(INITIAL_LIVES - 1);
+    // The neck is home now, so the following ticks are safe.
+    let state = struck;
+    for (let i = 0; i < 10; i++) {
+      state = update(state, i * MS_PER_TICK) as PlayingState;
+    }
+    expect(state.lives).toBe(INITIAL_LIVES - 1);
+  });
+
+  it('leaves a retracted giraffe untouched for a whole drop', () => {
+    let state = makePlayingState({ giraffePosition: 0, coconutStep: 1, coconutTicks: 1 });
+    for (let i = 0; i < COCONUT_STEP_TICKS * 6; i++) {
       state = update(state, i * MS_PER_TICK) as PlayingState;
     }
     expect(state.lives).toBe(INITIAL_LIVES);
   });
 
-  it('advances monkeyAction on its cycle boundary and repositions only when it becomes moving', () => {
-    const becomingMoving = makePlayingState({
-      tickCount: BASE_MONKEY_CYCLE_TICKS - 1,
-      monkeyAction: 'idle',
-      monkeyPosition: 3,
+  it('ends the game when the last life is lost', () => {
+    const lastLife = makePlayingState({
+      giraffePosition: 3,
+      lives: 1,
+      coconutStep: 2,
+      coconutTicks: 1,
     });
-    const moving = update(becomingMoving, 1000, always(0.5));
-    expect(moving.monkeyAction).toBe('moving');
-    expect(moving.monkeyPosition).toBe(2);
-
-    const becomingBlocking = makePlayingState({
-      tickCount: BASE_MONKEY_CYCLE_TICKS * 2 - 1,
-      monkeyAction: 'moving',
-      monkeyPosition: 2,
-    });
-    const blocking = update(becomingBlocking, 1000, always(0));
-    expect(blocking.monkeyAction).toBe('blocking');
-    expect(blocking.monkeyPosition).toBe(2);
+    const result = update(lastLife, 1000, always(0));
+    expect(result.phase).toBe('game_over');
+    if (result.phase === 'game_over') {
+      expect(result.reason).toBe('starved');
+    }
   });
 });

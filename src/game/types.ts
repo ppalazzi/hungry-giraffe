@@ -13,8 +13,14 @@ export type GiraffePosition = 0 | 1 | 2 | 3;
 /** The extended positions only — leaves can never appear at the home position. */
 export type LeafPosition = Exclude<GiraffePosition, 0>;
 
-/** Cyclic monkey behavior state, advances idle -> moving -> blocking -> attacking -> idle. */
-export type MonkeyAction = 'idle' | 'moving' | 'blocking' | 'attacking';
+/**
+ * Position of a falling coconut along its fixed diagonal path.
+ *   1 = top-right, beside the monkey
+ *   2 = mid-high air (centre-right)
+ *   3 = mid-low air (centre-left)
+ *   4 = ground level / impact zone (bottom-left)
+ */
+export type CoconutStep = 1 | 2 | 3 | 4;
 
 export interface GameStateBase {
   readonly phase: GamePhase;
@@ -25,8 +31,8 @@ export interface GameStateBase {
   readonly giraffePosition: GiraffePosition;
   readonly lives: number;
   readonly leafPositions: readonly LeafPosition[];
-  readonly monkeyPosition: GiraffePosition;
-  readonly monkeyAction: MonkeyAction;
+  readonly coconutStep: CoconutStep | null;
+  readonly coconutTicks: number;
 }
 
 export interface StartState extends GameStateBase {

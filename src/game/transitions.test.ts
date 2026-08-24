@@ -6,6 +6,7 @@ import {
   INITIAL_LIVES,
   LEAF_COUNT,
   MIN_LEAF_POSITION,
+  COCONUT_RESPAWN_TICKS,
 } from './constants';
 
 const always = (value: number) => () => value;
@@ -22,8 +23,8 @@ function makePlayingState(overrides: Partial<PlayingState> = {}): PlayingState {
     giraffePosition: 1,
     lives: INITIAL_LIVES,
     leafPositions: [1, 3],
-    monkeyPosition: 3,
-    monkeyAction: 'idle',
+    coconutStep: null,
+    coconutTicks: COCONUT_RESPAWN_TICKS,
     ...overrides,
   };
 }
@@ -38,8 +39,8 @@ function makePausedState(overrides: Partial<PausedState> = {}): PausedState {
     giraffePosition: 2,
     lives: INITIAL_LIVES,
     leafPositions: [1, 3],
-    monkeyPosition: 3,
-    monkeyAction: 'idle',
+    coconutStep: null,
+    coconutTicks: COCONUT_RESPAWN_TICKS,
     pausedAt: 2500,
     ...overrides,
   };
@@ -55,8 +56,8 @@ function makeGameOverState(overrides: Partial<GameOverState> = {}): GameOverStat
     giraffePosition: 2,
     lives: 0,
     leafPositions: [1, 3],
-    monkeyPosition: 3,
-    monkeyAction: 'idle',
+    coconutStep: null,
+    coconutTicks: COCONUT_RESPAWN_TICKS,
     finalScore: 50,
     reason: 'starved',
     ...overrides,
@@ -86,10 +87,11 @@ describe('transition', () => {
     });
   });
 
-  it('START_GAME sets up lives and monkey state', () => {
+  it('START_GAME sets up lives with no coconut in flight', () => {
     const next = transition(INITIAL_STATE, { type: 'START_GAME' });
     expect(next.lives).toBe(INITIAL_LIVES);
-    expect(next.monkeyAction).toBe('idle');
+    expect(next.coconutStep).toBeNull();
+    expect(next.coconutTicks).toBe(COCONUT_RESPAWN_TICKS);
   });
 
   it('PAUSE from playing moves to paused with correct pausedAt', () => {
@@ -116,15 +118,22 @@ describe('transition', () => {
     }
   });
 
-  it('PAUSE then RESUME preserves lives, leaves and monkey fields', () => {
-    const moved = makePlayingState({ leafPositions: [2, 3], lives: 2, monkeyPosition: 1 });
+  it('PAUSE then RESUME preserves lives, leaves and the coconut in flight', () => {
+    const moved = makePlayingState({
+      leafPositions: [2, 3],
+      lives: 2,
+      coconutStep: 2,
+      coconutTicks: 7,
+    });
     const paused = transition(moved, { type: 'PAUSE' }, 5000);
     expect(paused.leafPositions).toEqual([2, 3]);
     expect(paused.lives).toBe(2);
+    expect(paused.coconutStep).toBe(2);
     const resumed = transition(paused, { type: 'RESUME' }, 6000);
     expect(resumed.leafPositions).toEqual([2, 3]);
     expect(resumed.lives).toBe(2);
-    expect(resumed.monkeyPosition).toBe(1);
+    expect(resumed.coconutStep).toBe(2);
+    expect(resumed.coconutTicks).toBe(7);
   });
 
   it('GAME_OVER updates highScore when finalScore is greater', () => {

@@ -2,7 +2,7 @@ import { useRef, useState, useCallback, useEffect } from 'react';
 import { GameState, GameAction } from '../game/types';
 import { INITIAL_STATE, transition } from '../game/transitions';
 import { update } from '../game/loop';
-import { MS_PER_TICK } from '../game/constants';
+import { tickIntervalMs } from '../game/clock';
 
 export interface UseGameLoopResult {
   gameState: GameState;
@@ -25,9 +25,13 @@ export function useGameLoop(): UseGameLoopResult {
     if (gameStateRef.current.phase === 'playing') {
       accumulatorRef.current += elapsed;
 
-      while (accumulatorRef.current >= MS_PER_TICK) {
+      // The interval is re-read each pass: eating mid-catch-up can raise the
+      // score past a speed boundary and shorten the very next beat.
+      let interval = tickIntervalMs(gameStateRef.current.score);
+      while (accumulatorRef.current >= interval) {
         gameStateRef.current = update(gameStateRef.current, timestamp);
-        accumulatorRef.current -= MS_PER_TICK;
+        accumulatorRef.current -= interval;
+        interval = tickIntervalMs(gameStateRef.current.score);
       }
 
       setGameState(gameStateRef.current);

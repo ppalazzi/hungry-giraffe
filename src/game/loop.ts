@@ -1,12 +1,12 @@
 import { GameState, LeafPosition, PlayingState } from './types';
 import {
-  MS_PER_TICK,
   SCORE_PER_LEAF,
   COCONUT_STEP_TICKS,
   COCONUT_RESPAWN_TICKS,
 } from './constants';
 import { eatLeaf } from './leaves';
 import { advanceCoconut, isCoconutHit } from './coconut';
+import { tickIntervalMs } from './clock';
 import { transition } from './transitions';
 
 export function update(
@@ -40,7 +40,7 @@ export function update(
   const next: PlayingState = {
     ...state,
     tickCount,
-    deltaTime: MS_PER_TICK,
+    deltaTime: tickIntervalMs(score),
     lastTickTime: now,
     score,
     leafPositions,

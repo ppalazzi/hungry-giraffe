@@ -5,8 +5,7 @@ import {
   INITIAL_GIRAFFE_POSITION,
   INITIAL_LIVES,
   INITIAL_LEAF_POSITIONS,
-  INITIAL_MONKEY_POSITION,
-  INITIAL_MONKEY_ACTION,
+  COCONUT_RESPAWN_TICKS,
 } from './constants';
 import { moveGiraffe } from './movement';
 import { spawnInitialLeaves } from './leaves';
@@ -20,8 +19,8 @@ export const INITIAL_STATE: StartState = {
   giraffePosition: INITIAL_GIRAFFE_POSITION as GiraffePosition,
   lives: INITIAL_LIVES,
   leafPositions: INITIAL_LEAF_POSITIONS,
-  monkeyPosition: INITIAL_MONKEY_POSITION as GiraffePosition,
-  monkeyAction: INITIAL_MONKEY_ACTION,
+  coconutStep: null,
+  coconutTicks: COCONUT_RESPAWN_TICKS,
 };
 
 export function transition(
@@ -44,8 +43,8 @@ export function transition(
         giraffePosition: INITIAL_GIRAFFE_POSITION as GiraffePosition,
         lives: INITIAL_LIVES,
         leafPositions: spawnInitialLeaves(random),
-        monkeyPosition: INITIAL_MONKEY_POSITION as GiraffePosition,
-        monkeyAction: INITIAL_MONKEY_ACTION,
+        coconutStep: null,
+        coconutTicks: COCONUT_RESPAWN_TICKS,
       };
     }
     case 'PAUSE': {
@@ -59,8 +58,8 @@ export function transition(
         giraffePosition: state.giraffePosition,
         lives: state.lives,
         leafPositions: state.leafPositions,
-        monkeyPosition: state.monkeyPosition,
-        monkeyAction: state.monkeyAction,
+        coconutStep: state.coconutStep,
+        coconutTicks: state.coconutTicks,
         pausedAt: now,
       };
     }
@@ -77,8 +76,8 @@ export function transition(
         giraffePosition: state.giraffePosition,
         lives: state.lives,
         leafPositions: state.leafPositions,
-        monkeyPosition: state.monkeyPosition,
-        monkeyAction: state.monkeyAction,
+        coconutStep: state.coconutStep,
+        coconutTicks: state.coconutTicks,
       };
     }
     case 'GAME_OVER': {
@@ -93,8 +92,8 @@ export function transition(
         giraffePosition: state.giraffePosition,
         lives: state.lives,
         leafPositions: state.leafPositions,
-        monkeyPosition: state.monkeyPosition,
-        monkeyAction: state.monkeyAction,
+        coconutStep: state.coconutStep,
+        coconutTicks: state.coconutTicks,
         finalScore,
         reason: action.reason,
       };

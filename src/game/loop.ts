@@ -1,14 +1,13 @@
-import { GameState, LeafPosition } from './types';
+import { GameState, LeafPosition, PlayingState } from './types';
 import {
   MS_PER_TICK,
   SCORE_PER_LEAF,
-  BASE_MONKEY_CYCLE_TICKS,
-  MIN_CYCLE_TICKS,
-  SPEED_SCORE_STEP,
-  CYCLE_TICKS_PER_SPEED_LEVEL,
+  COCONUT_STEP_TICKS,
+  COCONUT_RESPAWN_TICKS,
 } from './constants';
 import { eatLeaf } from './leaves';
-import { advanceMonkeyAction, pickMonkeyPosition } from './monkey';
+import { advanceCoconut, isCoconutHit } from './coconut';
+import { transition } from './transitions';
 
 export function update(
   state: GameState,
@@ -28,29 +27,33 @@ export function update(
     eaten === null ? state.leafPositions : eatLeaf(state.leafPositions, eaten, random);
   const score = eaten === null ? state.score : state.score + SCORE_PER_LEAF;
 
-  const monkeyCycle = effectiveCycleTicks(BASE_MONKEY_CYCLE_TICKS, score);
-  const shouldAdvanceMonkey = tickCount % monkeyCycle === 0;
-  const monkeyAction = shouldAdvanceMonkey
-    ? advanceMonkeyAction(state.monkeyAction)
-    : state.monkeyAction;
-  const monkeyPosition =
-    shouldAdvanceMonkey && monkeyAction === 'moving'
-      ? pickMonkeyPosition(random)
-      : state.monkeyPosition;
+  const dropped = advanceCoconut(
+    state.coconutStep,
+    state.coconutTicks,
+    COCONUT_STEP_TICKS,
+    COCONUT_RESPAWN_TICKS,
+  );
 
-  return {
+  const struck =
+    dropped.step !== null && isCoconutHit(state.giraffePosition, dropped.step);
+
+  const next: PlayingState = {
     ...state,
     tickCount,
     deltaTime: MS_PER_TICK,
     lastTickTime: now,
     score,
     leafPositions,
-    monkeyAction,
-    monkeyPosition,
+    // A hit consumes the coconut so it cannot strike twice, and knocks the neck
+    // back to home — the player has to climb again.
+    giraffePosition: struck ? 0 : state.giraffePosition,
+    lives: struck ? state.lives - 1 : state.lives,
+    coconutStep: struck ? null : dropped.step,
+    coconutTicks: struck ? COCONUT_RESPAWN_TICKS : dropped.ticks,
   };
-}
 
-function effectiveCycleTicks(base: number, score: number): number {
-  const reduction = Math.floor(score / SPEED_SCORE_STEP) * CYCLE_TICKS_PER_SPEED_LEVEL;
-  return Math.max(MIN_CYCLE_TICKS, base - reduction);
+  if (next.lives <= 0) {
+    return transition(next, { type: 'GAME_OVER', reason: 'starved' }, now, random);
+  }
+  return next;
 }

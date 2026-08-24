@@ -1,159 +1,180 @@
-# Hungry Giraffe Game Specification
+# Hungry Giraffe — Game Specification
 
-Build a small browser game inspired by the 1985 Casio CG-91 "Hungry Giraffe" LCD handheld.
+A browser recreation of the 1985 Casio CG-91 "Hungry Giraffe" LCD handheld.
+
+This document is the authority for gameplay. It was rewritten against the
+CG-91 technical specification captured in HG-23; an earlier version described a
+different, looser game (giraffe on the right, an explicit eat button, a monkey
+that moved between branches) and no longer applies.
 
 ## Core concept
 
-The player controls a giraffe standing on the right side of the screen. A tree is on the left side. Leaves appear on several vertical positions along the tree. The giraffe stretches its neck toward the tree to eat leaves. A monkey moves on the tree and can interfere with the giraffe.
+The giraffe stands at the bottom-left of a fixed LCD segment grid. A tree fills
+the right side, with a monkey permanently stationed in the canopy at the
+top-right. The giraffe eats leaves by extending its neck diagonally up and to
+the right; the monkey drops coconuts down that same diagonal.
 
-The goal is to eat as many leaves as possible without being hit or interrupted by the monkey.
+The tension is entirely in the neck: extending it is the only way to score, and
+the only way to get hit.
 
-## Screen layout
+## Playfield layout
 
-Use a fixed retro LCD-style layout:
+The screen is a **fixed segment grid**. There are no continuous pixels and no
+interpolation — every element occupies a discrete, predetermined cell and
+switches on or off like an LCD segment.
 
-* Left side: tree trunk with several branches.
-* Right side: giraffe body.
-* Between them: giraffe neck path.
-* Tree contains 4 or 5 possible leaf positions.
-* Monkey occupies branch positions on the left/tree area.
-* Top-right HUD: score.
-* Right HUD: remaining lives.
-* Game-over text appears when lives reach zero.
+* **Bottom-left**: the giraffe's body, permanently fixed.
+* **Diagonal, running up and to the right**: the neck path.
+* **Right side**: a static tree, bottom-right to top-right.
+* **Top-right**: the monkey, permanently stationed in the canopy.
+* **Top-left**: lives.
+* **Top-right**: score.
 
-Use monochrome or very limited colors to mimic an LCD handheld.
+Monochrome or very limited colour, mimicking an LCD handheld.
+
+## The neck extension axis
+
+Head position is **extension, not a lane**. There are four discrete positions:
+
+| Position | Meaning |
+|---|---|
+| 0 | Home — fully retracted, head on the body at bottom-left |
+| 1 | Mid-low — slightly extended diagonally up-right |
+| 2 | Mid-high — extended further |
+| 3 | Full — reaching the lower leaves at top-centre |
+
+Extending to position N lights **every segment from 1 up to N**. This matters
+for collisions: the whole lit neck is exposed, not just the head.
+
+Position 0 is the **safe state**. It never holds a leaf and can never be struck.
 
 ## Controls
 
-Keyboard controls:
+* **Arrow Up** — extend one segment.
+* **Arrow Down** — retract one segment.
+* **Jump** — Phase 2 only (see below).
 
-* Arrow Up: move giraffe head target upward.
-* Arrow Down: move giraffe head target downward.
-* Space / Enter: Eat.
-* Optional: Arrow Left or separate key: Jump / dodge.
+There is **no eat button**. Eating is automatic.
 
-Touch buttons should also exist for mobile:
+Touch buttons mirror the same actions: UP, DOWN, START, and JUMP once Phase 2
+exists. There must be no EAT button.
 
-* UP
-* DOWN
-* EAT
-* JUMP
-* START
+## Phase 1: leaves and coconuts
 
-## Game state
+The primary loop. Score points while avoiding falling hazards.
 
-Maintain these state values:
+### Leaves
 
-* `gameStatus`: idle, running, paused, gameOver
-* `score`
-* `lives`, starting at 3
-* `giraffeHeadPosition`
-* `neckExtended`, boolean
-* `leafPositions`
-* `activeLeafPosition`
-* `monkeyPosition`
-* `monkeyAction`
-* `speedLevel`
-* `tickInterval`
+Leaves appear at positions **1, 2 or 3** — never at home. Several may be lit at
+once.
 
-## Gameplay loop
+When the head lights up on the same position as a leaf, that leaf is cleared
+automatically and scores **+1 point**. A new leaf is then revealed at a free
+position. There is no highlighted or "active" leaf: every lit leaf is equally
+edible.
 
-When the game starts:
+### Coconuts
 
-1. Reset score to 0.
-2. Reset lives to 3.
-3. Place the giraffe in neutral position.
-4. Spawn leaves at random valid tree positions.
-5. Start a repeated game tick.
+The monkey drops a coconut from the top-right. It falls a fixed **4-step**
+diagonal path, advancing one step per clock tick:
 
-On every tick:
+| Step | Location | Level with neck position |
+|---|---|---|
+| 1 | Near the monkey (top-right) | 3 |
+| 2 | Mid-high air (centre-right) | 2 |
+| 3 | Mid-low air (centre-left) | 1 |
+| 4 | Ground level / impact zone (bottom-left) | 0 |
 
-1. Move or animate the monkey.
-2. Possibly change the active leaf position.
-3. Check whether the monkey is threatening the giraffe.
-4. Increase speed gradually as score rises.
-5. Update LCD-style sprite visibility.
+The coconut descends while the neck ascends, so the two axes are **inverted**
+against each other.
 
-## Eating mechanic
+### Collision rule
 
-When the player presses EAT:
+A coconut strikes the giraffe when it passes over **any lit neck segment**.
+Since extending to position N lights segments 1..N, a deeply extended neck is
+exposed to the coconut for most of its fall, and a retracted neck is exposed to
+none of it.
 
-1. Extend the giraffe neck toward the currently selected vertical position.
-2. If the giraffe head matches a leaf position and the monkey is not blocking it:
-   * remove/eat that leaf
-   * add points
-   * play a short success sound
-   * spawn or reveal a new leaf
-3. If the giraffe eats at the wrong position:
-   * no score
-   * short miss delay
-4. If the monkey is attacking/blocking during the eat action:
-   * lose one life
-   * retract neck
-   * play fail sound
+* At home (position 0) nothing is lit, so **no coconut can ever hit**.
+* Step 4 is the landed frame at ground level and is **harmless** — it is what
+  makes home a genuine safe state.
 
-## Monkey hazard
+A strike costs **one life**, consumes the coconut so it cannot strike twice, and
+knocks the neck back to home.
 
-The monkey moves between branches on the tree. It should behave like a timed obstacle.
+> Recorded decision: HG-23 gave two contradictory collision rules — an exact
+> head-position match, and "the coconut will hit the neck structure on its way
+> down". The neck-structure reading above was chosen because it makes retracting
+> a real decision rather than a formality. See `isCoconutHit()` for the
+> implementation.
 
-Possible monkey states:
+## Phase 2: ground obstacle jump
 
-* idle
-* moving
-* blocking
-* attacking
+At scoring intervals the perspective shifts to an obstacle-evasion sequence.
 
-The monkey should periodically threaten one of the eating lanes. If the giraffe extends into the threatened lane at the wrong time, the player loses a life.
+* The neck automatically retracts and **locks at position 0**. Up and down are
+  disabled.
+* The monkey sends ground obstacles — logs or rocks — from the bottom-right.
+* Obstacles slide horizontally right-to-left along the floor toward the
+  giraffe's feet, one segment per tick.
+* **JUMP** lifts the giraffe: the ground segment turns off and a jumping segment
+  directly above turns on, for a fixed window of 2 ticks, then it lands
+  automatically.
+* If an obstacle reaches the leftmost segment while the giraffe is grounded, a
+  life is lost.
 
-## Scoring
+## Clock and difficulty
 
-Suggested scoring:
-
-* Successful leaf eaten: +10 points.
-* Optional bonus for quick consecutive eats: +5 extra.
-* Every 100 points, slightly increase game speed.
+The game runs on a slow LCD tick, not an animation frame loop. The tick interval
+starts at **600ms** and shortens as the score rises, down to a floor of
+**250ms**. Everything — coconut steps, obstacle movement, leaf changes — advances
+on this single tick, so the whole game accelerates together.
 
 ## Lives and game over
 
-The player starts with 3 lives.
+Three lives, shown top-left as three giraffe-shaped icons.
 
-Lose one life when:
+A life is lost when:
 
-* the monkey hits/intercepts the giraffe
-* the giraffe keeps its neck extended during danger
-* optionally, the player misses too many times
+* a coconut strikes the lit neck in Phase 1, or
+* a ground obstacle reaches a grounded giraffe in Phase 2.
 
-When lives reach 0:
+Losing a life blinks the screen and removes one icon.
 
-* stop the game loop
-* show GAME OVER
-* keep final score visible
-* allow restart with START
+At zero lives: stop the clock, show GAME OVER, keep the final score visible, and
+allow a restart.
 
 ## Visual style
 
-The game must feel like an old LCD handheld:
-
-* Fixed sprite positions, not smooth free movement.
-* Sprites turn on/off like LCD segments.
+* Fixed segment positions. No free movement, no interpolation, no scrolling.
+* Segments switch on and off; no tweening or transitions.
 * Simple frame-based animation.
-* No scrolling.
+* Score as a 3-4 digit 7-segment display.
 * No physics engine.
-* Limited sound effects.
 * Crisp pixel-art or LCD-segment look.
 
 ## Implementation preference
 
-Implement the game as a deterministic state machine. Avoid complex animation systems.
+A deterministic state machine. Randomness is injected rather than called
+directly, so behaviour is reproducible under test.
 
-Recommended structure:
+The important quality is not realistic movement but the handheld rhythm: choose
+an extension, take the leaf, retract before the coconut arrives, and do it
+faster as the score climbs.
 
-* `GameState`
-* `InputController`
-* `GameLoop`
-* `Renderer`
-* `SoundManager`
-* `CollisionRules`
-* `ScoringRules`
+## Open decisions
 
-The important behavior is not realistic movement. The important behavior is the old handheld rhythm: choose a lane, time the eat action, avoid the monkey, score points, speed increases, lose lives, game over.
+These are specified loosely or not at all in HG-23 and are still to be settled:
+
+* **Phase 2 trigger interval.** HG-23 says every 100 points, but scoring is +1
+  per leaf, so that is 100 successful eats. The figure looks carried over from an
+  earlier +10 scale. A much shorter interval is likely intended.
+* **Phase 2 exit condition.** HG-23 never says how Phase 2 ends and Phase 1
+  resumes — survive N obstacles, or a fixed duration.
+* **Clock ramp shape.** The 600ms and 250ms endpoints are given, and the cadence
+  ("every 50 points"), but not the decrement per step.
+* **Jump duration.** Stated as "2 ticks / ~300ms", but 2 ticks is 1200ms at the
+  slow clock and 500ms at the fast one. Treated as 2 ticks so the window scales
+  with difficulty.
+* **Sound.** Success and fail cues are desirable but currently owned by no
+  ticket.

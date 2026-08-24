@@ -53,9 +53,15 @@ The project enforces:
 
 ## Game Design
 
-See [`docs/GAME_SPEC.md`](docs/GAME_SPEC.md) for the full gameplay spec
-(screen layout, controls, scoring, monkey hazard, etc.) that HG-9 and later
-tickets implement against.
+See [`docs/GAME_SPEC.md`](docs/GAME_SPEC.md) for the full gameplay spec —
+segment-grid layout, the neck extension axis, the coconut hazard, the Phase 2
+jump mode, and the LCD clock.
+
+The spec was rewritten against the CG-91 specification in HG-23, which
+superseded the original design. Commits before that rework (HG-9 through HG-12)
+implemented a different game: equal vertical lanes, an explicit eat button, and
+a monkey that moved between branches and blocked eats. Read the spec, not those
+commits, for current behaviour.
 
 ## Development Notes
 

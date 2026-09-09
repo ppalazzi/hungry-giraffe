@@ -13,6 +13,14 @@
   --lcd-off: rgba(28, 36, 22, 0.055);
   --shell: #2a2a2e;
   --shell-edge: #47474d;
+  /*
+   * The HUD (lives, score) sits on the dark shell, not the light face, so
+   * its on/off contrast runs the opposite way: lit segments need to be
+   * bright against a dark background, and --lcd-on (dark-on-light) would
+   * vanish here just as --lcd-off (light-on-dark) would overpower it.
+   */
+  --shell-on: var(--lcd-face);
+  --shell-off: rgba(154, 168, 124, 0.16);
 }
 
 #root {
@@ -136,26 +144,129 @@
   }
 }
 
-/*
- * Placeholder readout until HG-28 builds the real 7-segment score and the
- * giraffe-shaped life icons. Lives sit top-left and score top-right, which is
- * where the CG-91 puts them.
- */
+/* HUD: lives top-left, score top-right, where the CG-91 puts them. */
 .lcd__hud {
   display: flex;
   justify-content: space-between;
-  align-items: baseline;
-  padding: 0 0.5rem 0.4rem;
-  color: var(--lcd-face);
-  font-family: ui-monospace, "SFMono-Regular", Menlo, monospace;
-  letter-spacing: 0.15em;
+  align-items: center;
+  padding: 0 0.4rem 0.5rem;
+}
+
+/*
+ * A brief full-screen invert on life loss — the LCD's own version of a hit
+ * flash. Toggled by JS holding a class for one fixed beat, not eased: it
+ * snaps on and off exactly like every other segment here.
+ */
+.lcd--flash .lcd__grid {
+  filter: invert(1);
 }
 
 .lcd__lives {
-  font-size: 0.9rem;
+  display: flex;
+  gap: 0.3rem;
+}
+
+/* A small giraffe head, reusing the body/head silhouette language from the
+   board itself so a life icon reads as "one giraffe", not an abstract mark. */
+.life-icon {
+  position: relative;
+  width: 0.85rem;
+  height: 0.7rem;
+  background: var(--shell-off);
+  border-radius: 0.15rem 0.35rem 0.1rem 0.15rem;
+}
+
+.life-icon--on {
+  background: var(--shell-on);
+}
+
+.life-icon::before,
+.life-icon::after {
+  content: "";
+  position: absolute;
+  top: -35%;
+  width: 16%;
+  height: 40%;
+  background: inherit;
+  border-radius: 999px;
+}
+
+.life-icon::before {
+  left: 15%;
+}
+
+.life-icon::after {
+  left: 48%;
 }
 
 .lcd__score {
-  font-size: 1.1rem;
-  font-variant-numeric: tabular-nums;
+  display: flex;
+  gap: 0.15rem;
+}
+
+/*
+ * One 7-segment digit, built from seven independently switched bars — the
+ * same on/off idiom as the board's segments, just laid out as a clock digit.
+ */
+.digit {
+  position: relative;
+  width: 0.55rem;
+  height: 1rem;
+}
+
+.digit__seg {
+  position: absolute;
+  background: var(--shell-off);
+}
+
+.digit__seg--on {
+  background: var(--shell-on);
+}
+
+.digit__seg--a,
+.digit__seg--g,
+.digit__seg--d {
+  left: 12%;
+  width: 76%;
+  height: 11%;
+}
+
+.digit__seg--a {
+  top: 0;
+}
+
+.digit__seg--g {
+  top: 44.5%;
+}
+
+.digit__seg--d {
+  bottom: 0;
+}
+
+.digit__seg--f,
+.digit__seg--b,
+.digit__seg--e,
+.digit__seg--c {
+  width: 13%;
+  height: 42%;
+}
+
+.digit__seg--f,
+.digit__seg--e {
+  left: 0;
+}
+
+.digit__seg--b,
+.digit__seg--c {
+  right: 0;
+}
+
+.digit__seg--f,
+.digit__seg--b {
+  top: 7%;
+}
+
+.digit__seg--e,
+.digit__seg--c {
+  bottom: 7%;
 }

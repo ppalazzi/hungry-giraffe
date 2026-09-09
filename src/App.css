@@ -80,58 +80,186 @@
 }
 
 .seg--neck {
-  width: 70%;
-  height: 70%;
+  width: 68%;
+  height: 68%;
   /* A diagonal bar, matching the direction the neck travels. */
   clip-path: polygon(0 65%, 65% 0, 100% 35%, 35% 100%);
 }
 
+/* Giraffe body: a rounded torso with two ossicone nubs, so it reads as a
+   giraffe rather than a plain rounded square. */
 .seg--body {
-  width: 82%;
-  height: 62%;
-  border-radius: 0.15rem 0.5rem 0.15rem 0.15rem;
+  width: 80%;
+  height: 58%;
+  border-radius: 0.15rem 0.6rem 0.15rem 0.15rem;
 }
 
+.seg--body::before,
+.seg--body::after {
+  content: "";
+  position: absolute;
+  top: -38%;
+  width: 12%;
+  height: 40%;
+  background: inherit;
+  border-radius: 999px;
+}
+
+.seg--body::before {
+  left: 20%;
+}
+
+.seg--body::after {
+  left: 44%;
+}
+
+/* Giraffe head: the same silhouette cue as the body, scaled down, so the
+   extended head still reads as "giraffe" rather than a bare dot. */
 .seg--head {
-  width: 42%;
-  height: 42%;
-  border-radius: 0.35rem 0.35rem 0.1rem 0.35rem;
+  width: 40%;
+  height: 40%;
+  border-radius: 0.3rem 0.6rem 0.15rem 0.3rem;
 }
 
+.seg--head::before,
+.seg--head::after {
+  content: "";
+  position: absolute;
+  top: -45%;
+  width: 16%;
+  height: 45%;
+  background: inherit;
+  border-radius: 999px;
+}
+
+.seg--head::before {
+  left: 18%;
+}
+
+.seg--head::after {
+  left: 50%;
+}
+
+/* Leaf: a pointed almond with a stem, sitting in the corner nearest the tree
+   rather than stacked on top of the neck bar. */
+/* A light ring so the leaf stays legible even sitting on a lit (same-color)
+   neck segment — otherwise it's invisible exactly when you're closing in on
+   it, which is the one moment it must read clearly. */
 .seg--leaf {
   width: 30%;
   height: 30%;
-  border-radius: 50% 0 50% 0;
-  transform: translate(52%, -46%);
+  top: 8%;
+  right: 6%;
+  border-radius: 0 90% 0 90%;
+  transform: rotate(-25deg);
+  box-shadow: 0 0 0 2px var(--lcd-face);
 }
 
+.seg--leaf::after {
+  content: "";
+  position: absolute;
+  top: 46%;
+  left: -35%;
+  width: 45%;
+  height: 12%;
+  background: inherit;
+  transform: rotate(-25deg);
+}
+
+/* Coconut: a fuzzy circle with the three "eyes" real coconuts show, so it
+   doesn't read as a plain dot. Centred on the neck diagonal it falls along. */
+/* Same ring treatment as the leaf, and for the same reason: the coconut
+   spends most of its fall on top of a lit neck segment, which is exactly
+   when it must stay readable as a distinct, dodgeable object. */
 .seg--coconut {
-  width: 34%;
-  height: 34%;
+  width: 32%;
+  height: 32%;
   border-radius: 50%;
-  transform: translate(-48%, 38%);
+  box-shadow: 0 0 0 2px var(--lcd-face);
+  background-image:
+    radial-gradient(circle at 38% 42%, var(--lcd-face) 6%, transparent 7%),
+    radial-gradient(circle at 62% 42%, var(--lcd-face) 6%, transparent 7%),
+    radial-gradient(circle at 50% 62%, var(--lcd-face) 6%, transparent 7%);
 }
 
+/* Tree trunk: bark striping and two branch nubs, so the right column reads as
+   a tree rather than a plain bar. */
 .seg--trunk {
   position: relative;
-  width: 46%;
+  width: 42%;
   height: 100%;
   justify-self: center;
   border-radius: 0.2rem;
+  background-image: repeating-linear-gradient(
+    var(--lcd-on),
+    var(--lcd-on) 22%,
+    rgba(154, 168, 124, 0.35) 22%,
+    rgba(154, 168, 124, 0.35) 26%
+  );
 }
 
+.seg--trunk::before,
+.seg--trunk::after {
+  content: "";
+  position: absolute;
+  left: -55%;
+  width: 65%;
+  height: 16%;
+  background: var(--lcd-on);
+  border-radius: 999px 0 0 999px;
+}
+
+.seg--trunk::before {
+  top: 18%;
+  transform: rotate(-18deg);
+}
+
+.seg--trunk::after {
+  top: 52%;
+  transform: rotate(14deg);
+}
+
+/* Monkey: a round head with two ears, so the canopy reads as a monkey rather
+   than a floating circle. */
 .seg--monkey {
-  width: 58%;
-  height: 58%;
-  border-radius: 50% 50% 40% 40%;
+  width: 54%;
+  height: 54%;
+  border-radius: 50%;
 }
 
+.seg--monkey::before,
+.seg--monkey::after {
+  content: "";
+  position: absolute;
+  top: -8%;
+  width: 34%;
+  height: 34%;
+  background: inherit;
+  border-radius: 50%;
+}
+
+.seg--monkey::before {
+  left: -10%;
+}
+
+.seg--monkey::after {
+  right: -10%;
+}
+
+/* Ground lane: a hatched strip, distinguishing it from the trunk. */
 .seg--ground {
   position: relative;
   width: 100%;
   height: 22%;
   align-self: center;
   border-radius: 0.1rem;
+  background-image: repeating-linear-gradient(
+    -45deg,
+    var(--lcd-on),
+    var(--lcd-on) 10%,
+    rgba(154, 168, 124, 0.35) 10%,
+    rgba(154, 168, 124, 0.35) 20%
+  );
 }
 
 @media (max-width: 30rem) {

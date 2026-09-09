@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { GameState, LeafPosition } from '../game/types';
 import { coconutPositionForStep } from '../game/coconut';
 import { cellForPosition, isNeckSegmentLit, POSITIONS_TOP_DOWN } from '../game/segments';
+import { obstacleColumn } from '../game/ground';
 import { GIRAFFE_POSITION_COUNT, MIN_GIRAFFE_POSITION, INITIAL_LIVES } from '../game/constants';
 import { isSegmentLit, scoreToDigits, Segment } from '../game/sevenSegment';
 
@@ -73,12 +74,19 @@ function useHitFlash(lives: number): boolean {
  * The one exception to "on or off, no interpolation" is the hit flash, which
  * is itself a discrete toggle held for a fixed beat rather than an eased
  * animation — it snaps, same as every segment.
+ *
+ * Phase 2 (mode === 'ground') repurposes the same grid: the neck locks at
+ * home, a log slides along the ground lane, and JUMP hops the body segment
+ * for a fixed window — the giraffe's own answer to the coconut's dodge.
  */
 export function GameCanvas({ gameState }: GameCanvasProps) {
-  const { giraffePosition, leafPositions, coconutStep, score, lives } = gameState;
+  const { giraffePosition, leafPositions, coconutStep, score, lives, mode } = gameState;
   const coconutPosition = coconutStep === null ? null : coconutPositionForStep(coconutStep);
   const treeColumn = GIRAFFE_POSITION_COUNT + 1;
   const isFlashing = useHitFlash(lives);
+  const isGroundMode = mode === 'ground';
+  const isJumping = isGroundMode && gameState.jumpTicksRemaining > 0;
+  const groundRow = GIRAFFE_POSITION_COUNT + 1;
 
   return (
     <div className={`lcd ${isFlashing ? 'lcd--flash' : ''}`}>
@@ -124,7 +132,7 @@ export function GameCanvas({ gameState }: GameCanvasProps) {
           return (
             <div key={position} className="cell" style={{ gridColumn: column, gridRow: row }}>
               {isBody ? (
-                <span className="seg seg--body seg--on" />
+                <span className={`seg seg--body seg--on ${isJumping ? 'seg--body--jump' : ''}`} />
               ) : (
                 <span className={`seg seg--neck ${isLit ? 'seg--on' : ''}`} />
               )}
@@ -135,12 +143,21 @@ export function GameCanvas({ gameState }: GameCanvasProps) {
           );
         })}
 
-        {/* Ground lane, reserved for the Phase 2 obstacles in HG-29. */}
+        {/* Ground lane: the floor itself, plus Phase 2's sliding obstacle. */}
         <div
           className="seg seg--ground seg--on"
-          style={{ gridColumn: `1 / ${treeColumn + 1}`, gridRow: GIRAFFE_POSITION_COUNT + 1 }}
+          style={{ gridColumn: `1 / ${treeColumn + 1}`, gridRow: groundRow }}
           aria-hidden
         />
+
+        {isGroundMode && gameState.obstacleStep !== null && (
+          <div
+            className="cell"
+            style={{ gridColumn: obstacleColumn(gameState.obstacleStep), gridRow: groundRow }}
+          >
+            <span className="seg seg--obstacle seg--on" />
+          </div>
+        )}
       </div>
     </div>
   );

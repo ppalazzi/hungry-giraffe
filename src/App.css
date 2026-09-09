@@ -262,6 +262,34 @@
   );
 }
 
+/*
+ * Phase 2 (HG-29): a log sliding along the ground lane, and the giraffe's own
+ * jump. Ringed like the leaf/coconut so it stays legible sitting on the
+ * ground lane's own dark fill.
+ */
+.seg--obstacle {
+  width: 72%;
+  height: 58%;
+  border-radius: 0.2rem;
+  box-shadow: 0 0 0 2px var(--lcd-face);
+  background-image: repeating-linear-gradient(
+    90deg,
+    var(--lcd-on),
+    var(--lcd-on) 28%,
+    rgba(154, 168, 124, 0.4) 28%,
+    rgba(154, 168, 124, 0.4) 34%
+  );
+}
+
+/*
+ * The literal "Jumping Giraffe segment" from HG-23 §3: the same body shape,
+ * hopped up within its own cell. A static offset, not eased — it snaps to
+ * position and back exactly like every other segment here.
+ */
+.seg--body--jump {
+  transform: translateY(-70%);
+}
+
 @media (max-width: 30rem) {
   .lcd {
     padding: 0.6rem;

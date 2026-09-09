@@ -4,6 +4,8 @@ import { GameAction } from '../game/types';
 /**
  * Maps keyboard input to game actions.
  * ArrowUp extends the neck one segment, ArrowDown retracts it.
+ * Space triggers JUMP — a no-op outside Phase 2's ground mode, per the
+ * reducer's own guard, so it's safe to always dispatch it.
  *
  * There is deliberately no eat key: a leaf is cleared automatically when the
  * head lights up on its position.
@@ -20,6 +22,9 @@ export function useKeyboardControls(dispatch: (action: GameAction) => void): voi
       } else if (event.key === 'ArrowDown') {
         event.preventDefault();
         dispatch({ type: 'MOVE_DOWN' });
+      } else if (event.key === ' ') {
+        event.preventDefault();
+        dispatch({ type: 'JUMP' });
       }
     };
 

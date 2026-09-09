@@ -22,6 +22,16 @@ export type LeafPosition = Exclude<GiraffePosition, 0>;
  */
 export type CoconutStep = 1 | 2 | 3 | 4;
 
+/** Position of a ground obstacle sliding right-to-left toward the giraffe's feet. */
+export type ObstacleStep = 1 | 2 | 3 | 4;
+
+/**
+ * Which mini-game is active. Phase 2 is a timed interruption of the leaf/
+ * coconut loop, not a replacement for it: leaving 'ground' mode resumes
+ * 'leaves' exactly where it paused.
+ */
+export type PlayMode = 'leaves' | 'ground';
+
 export interface GameStateBase {
   readonly phase: GamePhase;
   readonly score: number;
@@ -33,6 +43,12 @@ export interface GameStateBase {
   readonly leafPositions: readonly LeafPosition[];
   readonly coconutStep: CoconutStep | null;
   readonly coconutTicks: number;
+  readonly mode: PlayMode;
+  readonly nextGroundModeScore: number;
+  readonly obstacleStep: ObstacleStep | null;
+  readonly obstacleTicks: number;
+  readonly obstaclesSurvived: number;
+  readonly jumpTicksRemaining: number;
 }
 
 export interface StartState extends GameStateBase {
@@ -65,7 +81,8 @@ export type GameAction =
   | { type: 'GAME_OVER'; reason: GameOverState['reason'] }
   | { type: 'RESTART' }
   | { type: 'MOVE_UP' }
-  | { type: 'MOVE_DOWN' };
+  | { type: 'MOVE_DOWN' }
+  | { type: 'JUMP' };
 
 /** The neck is lit whenever the head is away from home. */
 export function isNeckExtended(position: GiraffePosition): boolean {

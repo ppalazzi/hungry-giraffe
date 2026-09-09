@@ -32,3 +32,15 @@ export const INITIAL_LEAF_POSITIONS: readonly LeafPosition[] = [1, 3];
 export const COCONUT_PATH_STEPS = 4;
 export const COCONUT_STEP_TICKS = 1; // one segment per clock tick
 export const COCONUT_RESPAWN_TICKS = 2; // beats between drops
+
+// Phase 2: a timed ground-obstacle interruption of the leaf-eating loop.
+// HG-23 gives no exit condition at all, and its trigger figure ("every 100
+// points") assumes the old +10-per-leaf scoring, which no longer applies.
+// Both figures below are assumptions, confirmed as: exit on a survived-
+// obstacle count rather than a fixed duration.
+export const PHASE_TWO_SCORE_INTERVAL = 25; // score points between Phase 2 entries
+export const PHASE_TWO_OBSTACLES_TO_CLEAR = 5; // successful jumps before returning to Phase 1
+export const GROUND_PATH_STEPS = 4;
+export const GROUND_STEP_TICKS = 1; // one segment per clock tick, same cadence as the coconut
+export const GROUND_RESPAWN_TICKS = 2;
+export const JUMP_TICKS = 2; // ticket assumption: ticks (not ms), so the window scales with the clock

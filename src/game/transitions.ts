@@ -6,6 +6,9 @@ import {
   INITIAL_LIVES,
   INITIAL_LEAF_POSITIONS,
   COCONUT_RESPAWN_TICKS,
+  PHASE_TWO_SCORE_INTERVAL,
+  GROUND_RESPAWN_TICKS,
+  JUMP_TICKS,
 } from './constants';
 import { moveGiraffe } from './movement';
 import { spawnInitialLeaves } from './leaves';
@@ -21,6 +24,12 @@ export const INITIAL_STATE: StartState = {
   leafPositions: INITIAL_LEAF_POSITIONS,
   coconutStep: null,
   coconutTicks: COCONUT_RESPAWN_TICKS,
+  mode: 'leaves',
+  nextGroundModeScore: PHASE_TWO_SCORE_INTERVAL,
+  obstacleStep: null,
+  obstacleTicks: GROUND_RESPAWN_TICKS,
+  obstaclesSurvived: 0,
+  jumpTicksRemaining: 0,
 };
 
 export function transition(
@@ -45,6 +54,12 @@ export function transition(
         leafPositions: spawnInitialLeaves(random),
         coconutStep: null,
         coconutTicks: COCONUT_RESPAWN_TICKS,
+        mode: 'leaves',
+        nextGroundModeScore: PHASE_TWO_SCORE_INTERVAL,
+        obstacleStep: null,
+        obstacleTicks: GROUND_RESPAWN_TICKS,
+        obstaclesSurvived: 0,
+        jumpTicksRemaining: 0,
       };
     }
     case 'PAUSE': {
@@ -60,6 +75,12 @@ export function transition(
         leafPositions: state.leafPositions,
         coconutStep: state.coconutStep,
         coconutTicks: state.coconutTicks,
+        mode: state.mode,
+        nextGroundModeScore: state.nextGroundModeScore,
+        obstacleStep: state.obstacleStep,
+        obstacleTicks: state.obstacleTicks,
+        obstaclesSurvived: state.obstaclesSurvived,
+        jumpTicksRemaining: state.jumpTicksRemaining,
         pausedAt: now,
       };
     }
@@ -78,6 +99,12 @@ export function transition(
         leafPositions: state.leafPositions,
         coconutStep: state.coconutStep,
         coconutTicks: state.coconutTicks,
+        mode: state.mode,
+        nextGroundModeScore: state.nextGroundModeScore,
+        obstacleStep: state.obstacleStep,
+        obstacleTicks: state.obstacleTicks,
+        obstaclesSurvived: state.obstaclesSurvived,
+        jumpTicksRemaining: state.jumpTicksRemaining,
       };
     }
     case 'GAME_OVER': {
@@ -94,18 +121,30 @@ export function transition(
         leafPositions: state.leafPositions,
         coconutStep: state.coconutStep,
         coconutTicks: state.coconutTicks,
+        mode: state.mode,
+        nextGroundModeScore: state.nextGroundModeScore,
+        obstacleStep: state.obstacleStep,
+        obstacleTicks: state.obstacleTicks,
+        obstaclesSurvived: state.obstaclesSurvived,
+        jumpTicksRemaining: state.jumpTicksRemaining,
         finalScore,
         reason: action.reason,
       };
     }
     case 'MOVE_UP':
     case 'MOVE_DOWN': {
-      if (state.phase !== 'playing') return state;
+      // The neck locks at home during Phase 2 — HG-23's "Neck Lock".
+      if (state.phase !== 'playing' || state.mode === 'ground') return state;
       const direction = action.type === 'MOVE_UP' ? 'up' : 'down';
       return {
         ...state,
         giraffePosition: moveGiraffe(state.giraffePosition, direction),
       };
+    }
+    case 'JUMP': {
+      if (state.phase !== 'playing' || state.mode !== 'ground') return state;
+      if (state.jumpTicksRemaining > 0) return state;
+      return { ...state, jumpTicksRemaining: JUMP_TICKS };
     }
     case 'RESTART': {
       return { ...INITIAL_STATE, highScore: state.highScore };

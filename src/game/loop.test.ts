@@ -7,6 +7,11 @@ import {
   LEAF_COUNT,
   COCONUT_STEP_TICKS,
   COCONUT_RESPAWN_TICKS,
+  PHASE_TWO_SCORE_INTERVAL,
+  PHASE_TWO_OBSTACLES_TO_CLEAR,
+  GROUND_RESPAWN_TICKS,
+  GROUND_PATH_STEPS,
+  JUMP_TICKS,
 } from './constants';
 import { PlayingState, StartState } from './types';
 import { tickIntervalMs } from './clock';
@@ -27,6 +32,12 @@ function makePlayingState(overrides: Partial<PlayingState> = {}): PlayingState {
     leafPositions: [1, 3],
     coconutStep: null,
     coconutTicks: COCONUT_RESPAWN_TICKS,
+    mode: 'leaves',
+    nextGroundModeScore: PHASE_TWO_SCORE_INTERVAL,
+    obstacleStep: null,
+    obstacleTicks: GROUND_RESPAWN_TICKS,
+    obstaclesSurvived: 0,
+    jumpTicksRemaining: 0,
     ...overrides,
   };
 }
@@ -46,6 +57,12 @@ describe('update', () => {
       leafPositions: [1, 3],
       coconutStep: null,
       coconutTicks: COCONUT_RESPAWN_TICKS,
+      mode: 'leaves',
+      nextGroundModeScore: PHASE_TWO_SCORE_INTERVAL,
+      obstacleStep: null,
+      obstacleTicks: GROUND_RESPAWN_TICKS,
+      obstaclesSurvived: 0,
+      jumpTicksRemaining: 0,
     };
     expect(update(startState, 1000)).toBe(startState);
   });
@@ -154,5 +171,131 @@ describe('update', () => {
     if (result.phase === 'game_over') {
       expect(result.reason).toBe('starved');
     }
+  });
+});
+
+describe('Phase 2', () => {
+  it('enters ground mode once score reaches the trigger, locking the neck home', () => {
+    const aboutToTrigger = makePlayingState({
+      giraffePosition: 3,
+      leafPositions: [3],
+      score: PHASE_TWO_SCORE_INTERVAL - SCORE_PER_LEAF,
+    });
+    const result = update(aboutToTrigger, 1000, always(0)) as PlayingState;
+    expect(result.score).toBe(PHASE_TWO_SCORE_INTERVAL);
+    expect(result.mode).toBe('ground');
+    expect(result.giraffePosition).toBe(0);
+    expect(result.obstacleStep).toBeNull();
+    expect(result.obstaclesSurvived).toBe(0);
+  });
+
+  it('advances the next trigger past the current score, not by a fixed step', () => {
+    const result = update(
+      makePlayingState({
+        giraffePosition: 3,
+        leafPositions: [3],
+        score: PHASE_TWO_SCORE_INTERVAL - SCORE_PER_LEAF,
+      }),
+      1000,
+      always(0),
+    ) as PlayingState;
+    expect(result.nextGroundModeScore).toBe(PHASE_TWO_SCORE_INTERVAL * 2);
+  });
+
+  it('does not eat leaves or advance the coconut while in ground mode', () => {
+    const grounded = makePlayingState({
+      mode: 'ground',
+      giraffePosition: 0,
+      leafPositions: [1, 3],
+      coconutStep: 2,
+      coconutTicks: 5,
+    });
+    const result = update(grounded, 1000, always(0)) as PlayingState;
+    expect(result.leafPositions).toEqual([1, 3]);
+    expect(result.coconutStep).toBe(2);
+    expect(result.coconutTicks).toBe(5);
+  });
+
+  it('ignores MOVE actions while the neck is locked (covered in transitions, sanity-checked here via loop)', () => {
+    const grounded = makePlayingState({ mode: 'ground', giraffePosition: 0 });
+    const result = update(grounded, 1000, always(0)) as PlayingState;
+    expect(result.giraffePosition).toBe(0);
+  });
+
+  it('costs a life when an obstacle arrives while not jumping', () => {
+    const arriving = makePlayingState({
+      mode: 'ground',
+      obstacleStep: (GROUND_PATH_STEPS - 1) as 3,
+      obstacleTicks: 1,
+      jumpTicksRemaining: 0,
+    });
+    const result = update(arriving, 1000, always(0)) as PlayingState;
+    expect(result.lives).toBe(INITIAL_LIVES - 1);
+    expect(result.obstaclesSurvived).toBe(0);
+    expect(result.obstacleStep).toBeNull();
+  });
+
+  it('survives an arriving obstacle without losing a life while jumping', () => {
+    const arriving = makePlayingState({
+      mode: 'ground',
+      obstacleStep: (GROUND_PATH_STEPS - 1) as 3,
+      obstacleTicks: 1,
+      jumpTicksRemaining: 1,
+    });
+    const result = update(arriving, 1000, always(0)) as PlayingState;
+    expect(result.lives).toBe(INITIAL_LIVES);
+    expect(result.obstaclesSurvived).toBe(1);
+  });
+
+  it('counts down the jump window and auto-lands', () => {
+    const jumping = makePlayingState({ mode: 'ground', jumpTicksRemaining: JUMP_TICKS });
+    const result = update(jumping, 1000, always(0)) as PlayingState;
+    expect(result.jumpTicksRemaining).toBe(JUMP_TICKS - 1);
+  });
+
+  it('returns to leaves mode once PHASE_TWO_OBSTACLES_TO_CLEAR are survived', () => {
+    let state = makePlayingState({ mode: 'ground', obstaclesSurvived: PHASE_TWO_OBSTACLES_TO_CLEAR - 1 });
+    state = {
+      ...state,
+      obstacleStep: (GROUND_PATH_STEPS - 1) as 3,
+      obstacleTicks: 1,
+      jumpTicksRemaining: 1,
+    };
+    const result = update(state, 1000, always(0)) as PlayingState;
+    expect(result.mode).toBe('leaves');
+    expect(result.obstaclesSurvived).toBe(0);
+  });
+
+  it('resumes leaves mode with leaf and coconut state exactly as it paused', () => {
+    let state = makePlayingState({
+      mode: 'ground',
+      obstaclesSurvived: PHASE_TWO_OBSTACLES_TO_CLEAR - 1,
+      leafPositions: [2, 3],
+      coconutStep: 3,
+      coconutTicks: 7,
+    });
+    state = {
+      ...state,
+      obstacleStep: (GROUND_PATH_STEPS - 1) as 3,
+      obstacleTicks: 1,
+      jumpTicksRemaining: 1,
+    };
+    const result = update(state, 1000, always(0)) as PlayingState;
+    expect(result.mode).toBe('leaves');
+    expect(result.leafPositions).toEqual([2, 3]);
+    expect(result.coconutStep).toBe(3);
+    expect(result.coconutTicks).toBe(7);
+  });
+
+  it('ends the game if the last life is lost to a ground obstacle', () => {
+    const arriving = makePlayingState({
+      mode: 'ground',
+      lives: 1,
+      obstacleStep: (GROUND_PATH_STEPS - 1) as 3,
+      obstacleTicks: 1,
+      jumpTicksRemaining: 0,
+    });
+    const result = update(arriving, 1000, always(0));
+    expect(result.phase).toBe('game_over');
   });
 });

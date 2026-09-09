@@ -7,6 +7,9 @@ import {
   LEAF_COUNT,
   MIN_LEAF_POSITION,
   COCONUT_RESPAWN_TICKS,
+  PHASE_TWO_SCORE_INTERVAL,
+  GROUND_RESPAWN_TICKS,
+  JUMP_TICKS,
 } from './constants';
 
 const always = (value: number) => () => value;
@@ -25,6 +28,12 @@ function makePlayingState(overrides: Partial<PlayingState> = {}): PlayingState {
     leafPositions: [1, 3],
     coconutStep: null,
     coconutTicks: COCONUT_RESPAWN_TICKS,
+    mode: 'leaves',
+    nextGroundModeScore: PHASE_TWO_SCORE_INTERVAL,
+    obstacleStep: null,
+    obstacleTicks: GROUND_RESPAWN_TICKS,
+    obstaclesSurvived: 0,
+    jumpTicksRemaining: 0,
     ...overrides,
   };
 }
@@ -41,6 +50,12 @@ function makePausedState(overrides: Partial<PausedState> = {}): PausedState {
     leafPositions: [1, 3],
     coconutStep: null,
     coconutTicks: COCONUT_RESPAWN_TICKS,
+    mode: 'leaves',
+    nextGroundModeScore: PHASE_TWO_SCORE_INTERVAL,
+    obstacleStep: null,
+    obstacleTicks: GROUND_RESPAWN_TICKS,
+    obstaclesSurvived: 0,
+    jumpTicksRemaining: 0,
     pausedAt: 2500,
     ...overrides,
   };
@@ -58,6 +73,12 @@ function makeGameOverState(overrides: Partial<GameOverState> = {}): GameOverStat
     leafPositions: [1, 3],
     coconutStep: null,
     coconutTicks: COCONUT_RESPAWN_TICKS,
+    mode: 'leaves',
+    nextGroundModeScore: PHASE_TWO_SCORE_INTERVAL,
+    obstacleStep: null,
+    obstacleTicks: GROUND_RESPAWN_TICKS,
+    obstaclesSurvived: 0,
+    jumpTicksRemaining: 0,
     finalScore: 50,
     reason: 'starved',
     ...overrides,
@@ -218,5 +239,55 @@ describe('transition', () => {
   it('MOVE actions are ignored when not playing', () => {
     expect(transition(INITIAL_STATE, { type: 'MOVE_UP' })).toBe(INITIAL_STATE);
     expect(transition(INITIAL_STATE, { type: 'MOVE_DOWN' })).toBe(INITIAL_STATE);
+  });
+
+  it('MOVE actions are ignored during ground mode (neck lock)', () => {
+    const grounded = makePlayingState({ mode: 'ground', giraffePosition: 0 });
+    expect(transition(grounded, { type: 'MOVE_UP' })).toBe(grounded);
+    expect(transition(grounded, { type: 'MOVE_DOWN' })).toBe(grounded);
+  });
+
+  it('JUMP starts the jump window during ground mode', () => {
+    const grounded = makePlayingState({ mode: 'ground', jumpTicksRemaining: 0 });
+    const next = transition(grounded, { type: 'JUMP' });
+    expect(next.jumpTicksRemaining).toBe(JUMP_TICKS);
+  });
+
+  it('JUMP is ignored outside ground mode', () => {
+    expect(transition(playingState, { type: 'JUMP' })).toBe(playingState);
+  });
+
+  it('JUMP is ignored while not playing', () => {
+    expect(transition(INITIAL_STATE, { type: 'JUMP' })).toBe(INITIAL_STATE);
+  });
+
+  it('JUMP does not restart the window mid-jump', () => {
+    const midJump = makePlayingState({ mode: 'ground', jumpTicksRemaining: 1 });
+    expect(transition(midJump, { type: 'JUMP' })).toBe(midJump);
+  });
+
+  it('START_GAME resets Phase 2 state to leaves mode', () => {
+    const next = transition(INITIAL_STATE, { type: 'START_GAME' });
+    expect(next.mode).toBe('leaves');
+    expect(next.obstacleStep).toBeNull();
+    expect(next.obstaclesSurvived).toBe(0);
+    expect(next.jumpTicksRemaining).toBe(0);
+    expect(next.nextGroundModeScore).toBe(PHASE_TWO_SCORE_INTERVAL);
+  });
+
+  it('PAUSE then RESUME preserves ground-mode state', () => {
+    const grounded = makePlayingState({
+      mode: 'ground',
+      obstacleStep: 2,
+      obstaclesSurvived: 3,
+      jumpTicksRemaining: 1,
+    });
+    const paused = transition(grounded, { type: 'PAUSE' }, 5000);
+    expect(paused.mode).toBe('ground');
+    expect(paused.obstacleStep).toBe(2);
+    const resumed = transition(paused, { type: 'RESUME' }, 6000);
+    expect(resumed.mode).toBe('ground');
+    expect(resumed.obstaclesSurvived).toBe(3);
+    expect(resumed.jumpTicksRemaining).toBe(1);
   });
 });

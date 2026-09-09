@@ -15,8 +15,11 @@ interface GameCanvasProps {
  * column. Coconuts fall down the same diagonal the neck climbs, which is what
  * makes an extended neck a target.
  *
- * Every element is a segment that is either on or off — no interpolation, no
- * transitions, no intermediate frames.
+ * The neck is a structural segment: always in the DOM, switched on or off, the
+ * way an LCD digit's segments are all etched and only some are powered. The
+ * leaf, coconut and head are transient sprites instead — they only mount when
+ * present, so an empty cell stays empty rather than showing faint outlines of
+ * everything that could be there.
  */
 export function GameCanvas({ gameState }: GameCanvasProps) {
   const { giraffePosition, leafPositions, coconutStep } = gameState;
@@ -72,9 +75,9 @@ export function GameCanvas({ gameState }: GameCanvasProps) {
               ) : (
                 <span className={`seg seg--neck ${isLit ? 'seg--on' : ''}`} />
               )}
-              <span className={`seg seg--leaf ${hasLeaf ? 'seg--on' : ''}`} />
-              <span className={`seg seg--head ${isHead && !isBody ? 'seg--on' : ''}`} />
-              <span className={`seg seg--coconut ${hasCoconut ? 'seg--on' : ''}`} />
+              {hasLeaf && <span className="seg seg--leaf seg--on" />}
+              {isHead && !isBody && <span className="seg seg--head seg--on" />}
+              {hasCoconut && <span className="seg seg--coconut seg--on" />}
             </div>
           );
         })}

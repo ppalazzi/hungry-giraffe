@@ -1,10 +1,59 @@
+import { useEffect, useRef, useState } from 'react';
 import { GameState, LeafPosition } from '../game/types';
 import { coconutPositionForStep } from '../game/coconut';
 import { cellForPosition, isNeckSegmentLit, POSITIONS_TOP_DOWN } from '../game/segments';
-import { GIRAFFE_POSITION_COUNT, MIN_GIRAFFE_POSITION } from '../game/constants';
+import { GIRAFFE_POSITION_COUNT, MIN_GIRAFFE_POSITION, INITIAL_LIVES } from '../game/constants';
+import { isSegmentLit, scoreToDigits, Segment } from '../game/sevenSegment';
 
 interface GameCanvasProps {
   gameState: GameState;
+}
+
+const SEGMENTS: readonly Segment[] = ['a', 'b', 'c', 'd', 'e', 'f', 'g'];
+const HIT_FLASH_MS = 180;
+
+function SevenSegmentDigit({ digit }: { digit: number }) {
+  return (
+    <span className="digit">
+      {SEGMENTS.map((segment) => (
+        <span
+          key={segment}
+          className={`digit__seg digit__seg--${segment} ${
+            isSegmentLit(digit, segment) ? 'digit__seg--on' : ''
+          }`}
+        />
+      ))}
+    </span>
+  );
+}
+
+function LifeIcons({ lives }: { lives: number }) {
+  const slots = Array.from({ length: INITIAL_LIVES }, (_, i) => i);
+  return (
+    <div className="lcd__lives" aria-label={`${lives} lives remaining`}>
+      {slots.map((slot) => (
+        <span key={slot} className={`life-icon ${slot < lives ? 'life-icon--on' : ''}`} />
+      ))}
+    </div>
+  );
+}
+
+/** Flashes true for one beat right after `lives` drops, then clears itself. */
+function useHitFlash(lives: number): boolean {
+  const [flashing, setFlashing] = useState(false);
+  const previousLives = useRef(lives);
+
+  useEffect(() => {
+    if (lives < previousLives.current) {
+      setFlashing(true);
+      const timer = setTimeout(() => setFlashing(false), HIT_FLASH_MS);
+      previousLives.current = lives;
+      return () => clearTimeout(timer);
+    }
+    previousLives.current = lives;
+  }, [lives]);
+
+  return flashing;
 }
 
 /**
@@ -20,22 +69,26 @@ interface GameCanvasProps {
  * leaf, coconut and head are transient sprites instead — they only mount when
  * present, so an empty cell stays empty rather than showing faint outlines of
  * everything that could be there.
+ *
+ * The one exception to "on or off, no interpolation" is the hit flash, which
+ * is itself a discrete toggle held for a fixed beat rather than an eased
+ * animation — it snaps, same as every segment.
  */
 export function GameCanvas({ gameState }: GameCanvasProps) {
-  const { giraffePosition, leafPositions, coconutStep } = gameState;
+  const { giraffePosition, leafPositions, coconutStep, score, lives } = gameState;
   const coconutPosition = coconutStep === null ? null : coconutPositionForStep(coconutStep);
   const treeColumn = GIRAFFE_POSITION_COUNT + 1;
+  const isFlashing = useHitFlash(lives);
 
   return (
-    <div className="lcd">
-      {/*
-        Plain-text readout for now. HG-28 replaces this with the real HUD: a
-        7-segment score and giraffe-shaped life icons. Kept here so the game
-        stays playable in the meantime.
-      */}
+    <div className={`lcd ${isFlashing ? 'lcd--flash' : ''}`}>
       <div className="lcd__hud">
-        <span className="lcd__lives">{'\u25AE'.repeat(Math.max(0, gameState.lives))}</span>
-        <span className="lcd__score">{String(gameState.score).padStart(3, '0')}</span>
+        <LifeIcons lives={lives} />
+        <div className="lcd__score" aria-label={`score ${score}`}>
+          {scoreToDigits(score).map((digit, index) => (
+            <SevenSegmentDigit key={index} digit={digit} />
+          ))}
+        </div>
       </div>
       <div
         className="lcd__grid"

@@ -426,3 +426,45 @@
 .digit__seg--c {
   bottom: 7%;
 }
+
+/*
+ * Touch controls: UP/DOWN/JUMP for mobile, dispatching the same actions as
+ * the keyboard. Sized for a thumb, not a cursor — 44px is the usual minimum
+ * comfortable tap target.
+ */
+.touch-controls {
+  display: flex;
+  gap: 0.75rem;
+  width: 100%;
+  max-width: 30rem;
+}
+
+.touch-controls__button {
+  flex: 1;
+  min-height: 3rem;
+  font-size: 1.25rem;
+  border-radius: 0.5rem;
+  border: 1px solid transparent;
+  background-color: #1a1a1a;
+  color: inherit;
+  cursor: pointer;
+  /* Buttons are meant to be tapped repeatedly in quick succession; no
+     transition delay on press feedback. */
+  transition: none;
+}
+
+.touch-controls__button:active {
+  border-color: #646cff;
+}
+
+.touch-controls__button--jump {
+  font-size: 1rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+}
+
+@media (prefers-color-scheme: light) {
+  .touch-controls__button {
+    background-color: #f9f9f9;
+  }
+}
